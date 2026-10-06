@@ -23,8 +23,14 @@ another position) and the Learn tab quizzes on the tree with spaced repetition
 Accounts: every member signs up themselves (Supabase email auth). Personal docs are stored at
 `bjj/u/<uid>/<key>` (private by RLS); legacy `bjj/<key>` rows are adopted on first load. Club docs
 (`clubs/index`, `club/<id>/profile|members|pay/<uid>`) are shared; `CLUB` holds the loaded club,
-`S.settings.clubId` the membership, `profile.admins` the coaches. Local mode keeps club docs in
-localStorage. Tabs: Technique, Train (Log | Body), Club (Schedule | Payments | Members), Me
+`S.settings.clubId` the membership, `profile.admins` the coaches. Clubs carry `status`
+(pending until an app admin approves), `code` (members join with it) and `coachCode` (claims
+coach rights); seeded clubs from `seed.js` `clubs` are `open` until claimed. Payments are
+`pending` when a member taps “I have paid” and `ok` once a coach confirms. App admins
+(`CFG.admins` emails or `app/config.admins`) approve clubs and upgrade requests (`app/upgrades`
+→ `app/pro.u[uid].until`). `unlocked()` gates Setups/Learn/Plans/History: coach, confirmed
+monthly fee, upgrade, or app admin. Local mode keeps club docs in localStorage and counts
+as app admin. Tabs: Technique, Train (Log | Body), Club (Schedule | Payments | Members), Me
 (Rank | Weight | Compete).
 
 ## Skills

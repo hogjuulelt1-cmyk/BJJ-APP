@@ -10,6 +10,8 @@ Static site, no build step. `index.html` holds the markup and CSS, `app.js` the 
 2. Authentication → Providers → Email: keep sign-ups **on** so club members can create their own account. Turn off "Confirm email" if you want them signed in right away.
 3. Put the project URL and anon key in `config.js`.
 
+Set `admins` in `config.js` to the emails that approve new clubs and upgrade requests. Clubs from `seed.js` are created on first load, open to join until a coach claims them with the coach code (visible to app admins under Club → App admin → Club codes).
+
 Each member's techniques, rolls and logs live under `bjj/u/<uid>/…` and are private. Club data (profile, schedule, members, payments) lives under `club/<id>/…` and is shared with every signed-in member, so only invite people you train with.
 3. Vercel: import this repo, framework "Other". Every push to `main` deploys.
 
