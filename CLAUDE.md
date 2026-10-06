@@ -31,7 +31,7 @@ coach rights); seeded clubs from `seed.js` `clubs` are `open` until claimed. Pay
 → `app/pro.u[uid].until`). `unlocked()` gates Setups/Learn/Plans/History: coach, confirmed
 monthly fee, upgrade, or app admin. Local mode keeps club docs in localStorage and counts
 as app admin. Club docs also hold `att/<yyyy-mm>` (attendance, keyed by uid or roster id), `results`
-(medals awaiting coach approval), `notes` (notices), `events` (competition calendar). Members in
+(medals awaiting coach approval), `notes` (notices), `events` (competition calendar). `rolls/<yyyy-mm>` holds who rolled with whom (from the training log's `with`). Members in
 `members.list` carry `id` (roster), `uid` (linked account or null), `coachSet` (coach's belt wins).
 `IAP` wraps a Capacitor/RevenueCat or `window.IAP` purchase bridge; without one the upgrade sheet
 falls back to a transfer. Drills: `SEED.drills` (kind solo|partner|sub|td|esc|flow, `tech` names link to moves by name) plus
