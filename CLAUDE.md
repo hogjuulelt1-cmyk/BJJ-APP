@@ -9,7 +9,13 @@ Data model: a flat node list (`S.tree.nodes`) of positions (`k: pos`), my moves 
 the opponent's defenses (`df`), with path-based ids from the seed (`cg_b.1.1.1`). Moves carry
 `when` (situation), `oc` (outcomes with common/rare), `pts`, `energy`, `gi`, `belt`, `bait`,
 `kids`, `legal`. Seed changes must append children (ids are index based); bump
-`version` in `seed.js` so `mergeSeed` adds them to existing user trees.
+`version` in `seed.js` so `mergeSeed` adds them to existing user trees. A submission with no
+written defenses gets generic ones at flatten time (`<id>.dfx` loops back to the position,
+`<id>.esc` lands in `ESC_TO[pos]`), so a roll only ends on "Tap!". Defenses may carry `to`
+(where the opponent lands). Positions carry `them` (what the opponent is doing).
+
+Setups (`S.plans.setups`) are user-built chains position → move → reaction → … → submission;
+a roll started from one (`UI.roll.plan`) stars the next planned node on the graph.
 
 ## Skills
 
