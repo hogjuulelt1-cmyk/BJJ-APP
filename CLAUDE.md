@@ -1,6 +1,6 @@
 # Chinbilig Jiu-jitsu
 
-Static PWA (no build step): `index.html` (markup + CSS), `app.js` (app), `seed.js` and `meta.js`
+Static PWA (no build step), used by a whole club: `index.html` (markup + CSS), `app.js` (app), `seed.js` and `meta.js`
 (starter technique library and its annotations), `config.js` (Supabase URL + anon key),
 `supabase/schema.sql`. Deployed by Vercel on every push to `main`. UI text is English;
 talk to the user in Mongolian.
@@ -19,6 +19,13 @@ a roll started from one (`UI.roll.plan`) stars the next planned node on the grap
 tab also finds routes between two positions (`findRoutes`, edges = moves whose outcome is
 another position) and the Learn tab quizzes on the tree with spaced repetition
 (`S.settings.learn.cards`, card ids `when:|ans:|land:|key:` + node id).
+
+Accounts: every member signs up themselves (Supabase email auth). Personal docs are stored at
+`bjj/u/<uid>/<key>` (private by RLS); legacy `bjj/<key>` rows are adopted on first load. Club docs
+(`clubs/index`, `club/<id>/profile|members|pay/<uid>`) are shared; `CLUB` holds the loaded club,
+`S.settings.clubId` the membership, `profile.admins` the coaches. Local mode keeps club docs in
+localStorage. Tabs: Technique, Train (Log | Body), Club (Schedule | Payments | Members), Me
+(Rank | Weight | Compete).
 
 ## Skills
 

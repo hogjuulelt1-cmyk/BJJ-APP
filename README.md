@@ -6,8 +6,11 @@ Static site, no build step. `index.html` holds the markup and CSS, `app.js` the 
 
 ## Setup
 
-1. Supabase: create a project, run `supabase/schema.sql`, turn off public sign-ups, add the user.
-2. Put the project URL and anon key in `config.js`.
+1. Supabase: create a project and run `supabase/schema.sql` (re-run it after updates; it adds the `owner` column and the per-user policies).
+2. Authentication → Providers → Email: keep sign-ups **on** so club members can create their own account. Turn off "Confirm email" if you want them signed in right away.
+3. Put the project URL and anon key in `config.js`.
+
+Each member's techniques, rolls and logs live under `bjj/u/<uid>/…` and are private. Club data (profile, schedule, members, payments) lives under `club/<id>/…` and is shared with every signed-in member, so only invite people you train with.
 3. Vercel: import this repo, framework "Other". Every push to `main` deploys.
 
 ## Checks before pushing
