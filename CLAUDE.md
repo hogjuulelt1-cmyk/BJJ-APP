@@ -49,6 +49,12 @@ club (overview, clubs, members, payments, competitions, upgrades, settings); a c
 session is ignored; the app's sign-in accepts a bare username the same way. Member records may
 carry `comp` (competition team). Vercel's cleanUrls serves the console at `/admin`.
 
+Streaks (`streaks()`): consecutive weeks with a trained day, scheduled class days attended in a
+row, and days in a row; a trained day is a logged session, a done drill or a club check-in. The
+share card (`shareSheet`/`drawShare`) draws a 1080×1350 canvas: photo or mat, session numbers,
+the day's roll path (or the week's dots), the belt and the streak; it opens after a training is
+saved and from the Log card, and uses the Web Share API with a PNG download fallback.
+
 ## Skills
 
 | Task | Skill |
