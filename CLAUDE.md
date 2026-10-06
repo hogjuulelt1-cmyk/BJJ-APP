@@ -2,8 +2,11 @@
 
 Static PWA (no build step), used by a whole club: `index.html` (markup + CSS), `app.js` (app), `seed.js` and `meta.js`
 (starter technique library and its annotations), `config.js` (Supabase URL + anon key),
-`supabase/schema.sql`. Deployed by Vercel on every push to `main`. UI text is English;
-talk to the user in Mongolian.
+`supabase/schema.sql`. Deployed by Vercel on every push to `main`. UI text is written in English in the code and shown in Mongolian by default: `lang-mn.js` holds
+the dictionary and rules, `I18N` (app.js and admin.js) translates text nodes, placeholders and
+aria-labels in the DOM through a MutationObserver; technique and drill names use the data's `en`
+(Mongolian) field via `dn()`. Settings → Language switches to English. Add new UI strings to
+the dictionary. Talk to the user in Mongolian.
 
 Data model: a flat node list (`S.tree.nodes`) of positions (`k: pos`), my moves (`mv`) and
 the opponent's defenses (`df`), with path-based ids from the seed (`cg_b.1.1.1`). Moves carry

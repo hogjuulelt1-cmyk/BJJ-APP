@@ -39,3 +39,7 @@ Coaches add members before they have an account (name, email, belt, stripes). Wh
 up with the same email and joins with the club code, the two records link and the coach's belt becomes
 the member's belt. Attendance comes from the member's check-in, their logged training, or the coach's
 attendance list; medals a member records wait for the coach's approval.
+
+## Language
+
+The app and the console open in Mongolian. Settings → Language (or the button in the console sidebar) switches to English. Strings live in `lang-mn.js`: exact text in `dict`, text with numbers or names in `rules`. Technique, position and drill names come from the `en` field of the data.
