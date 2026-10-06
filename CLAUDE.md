@@ -15,7 +15,10 @@ written defenses gets generic ones at flatten time (`<id>.dfx` loops back to the
 (where the opponent lands). Positions carry `them` (what the opponent is doing).
 
 Setups (`S.plans.setups`) are user-built chains position → move → reaction → … → submission;
-a roll started from one (`UI.roll.plan`) stars the next planned node on the graph.
+a roll started from one (`UI.roll.plan`) stars the next planned node on the graph. The Setups
+tab also finds routes between two positions (`findRoutes`, edges = moves whose outcome is
+another position) and the Learn tab quizzes on the tree with spaced repetition
+(`S.settings.learn.cards`, card ids `when:|ans:|land:|key:` + node id).
 
 ## Skills
 
