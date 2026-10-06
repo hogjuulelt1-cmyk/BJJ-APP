@@ -18,3 +18,18 @@ Each member's techniques, rolls and logs live under `bjj/u/<uid>/…` and are pr
 ## Checks before pushing
 
 Serve locally with `config.js` set to `window.APP_CONFIG={}` and load the page in Playwright at iPhone 13 size: no page errors, no horizontal overflow, inputs stay 16px, motion respects `prefers-reduced-motion`.
+
+## Store subscriptions
+
+On the web the upgrade is paid by transfer and approved by an app admin. To sell it through the
+App Store and Google Play, wrap the site with Capacitor and add RevenueCat (`@revenuecat/purchases-capacitor`):
+the app detects `window.Capacitor.Plugins.Purchases` and shows "Subscribe with App Store / Google Play".
+Create a product `bjj.pro.month` with an entitlement named `pro` (the product id can be changed in
+`app/config.pro.product`). Any other wrapper can expose `window.IAP = { buy(productId) → Promise<{ until: "YYYY-MM" }> }`.
+
+## Coaches
+
+Coaches add members before they have an account (name, email, belt, stripes). When that person signs
+up with the same email and joins with the club code, the two records link and the coach's belt becomes
+the member's belt. Attendance comes from the member's check-in, their logged training, or the coach's
+attendance list; medals a member records wait for the coach's approval.
