@@ -34,7 +34,9 @@ as app admin. Club docs also hold `att/<yyyy-mm>` (attendance, keyed by uid or r
 (medals awaiting coach approval), `notes` (notices), `events` (competition calendar). Members in
 `members.list` carry `id` (roster), `uid` (linked account or null), `coachSet` (coach's belt wins).
 `IAP` wraps a Capacitor/RevenueCat or `window.IAP` purchase bridge; without one the upgrade sheet
-falls back to a transfer. Tabs: Technique, Train (Log | Body), Club (Schedule | Payments | Members), Me
+falls back to a transfer. Drills: `SEED.drills` (kind solo|partner|sub|td|esc|flow, `tech` names link to moves by name) plus
+the user's own in `S.body.drills`; a done drill is a `S.body.items` row with `cat: "drill"`.
+Tabs: Technique, Train (Log | Drills | Body), Club (Today | Schedule | Members | Pay), Me
 (Rank | Weight | Compete).
 
 ## Skills
