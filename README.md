@@ -19,9 +19,11 @@ Each member's techniques, rolls and logs live under `bjj/u/<uid>/…` and are pr
 
 Serve locally with `config.js` set to `window.APP_CONFIG={}` and load the page in Playwright at iPhone 13 size: no page errors, no horizontal overflow, inputs stay 16px, motion respects `prefers-reduced-motion`.
 
-## Admin console
+## Coach & admin console
 
-Open `/admin` (the `admin.html` page) on a computer and sign in with an email listed in `config.js` → `admins`. It shows every club, member, payment and upgrade request, lets you approve clubs, confirm payments, grant upgrades and edit the payment settings. Anyone else who signs in sees “Not an admin”. The app's Settings sheet links to it for admins.
+Open `/admin` (the `admin.html` page) on a computer and sign in with your app account. A coach sees their own club: members with belt, time at belt against the IBJJF minimum, paid-until, attendance, medals and login status; fee logging and confirmation; competition results and the competition team; upcoming competitions. An app admin (`config.js` → `admins`) sees every club plus approvals, upgrades and settings.
+
+Coaches and admins can add a member together with a login: give a username and a password and the member signs in to the app with just that username (it is stored as `username@member.bjjclub.mn`; change the domain with `memberDomain` in `config.js`). This needs sign-ups enabled and “Confirm email” off in Supabase.
 
 ## Store subscriptions
 

@@ -39,9 +39,12 @@ the user's own in `S.body.drills`; a done drill is a `S.body.items` row with `ca
 Tabs: Technique, Train (Log | Drills | Body), Club (Today | Schedule | Members | Pay), Me
 (Rank | Weight | Compete).
 
-`admin.html` + `admin.js` is the desktop admin console (same Supabase session; only admin emails
-get in): overview, clubs, members, payments, upgrades, settings. It reads every `club/*` doc
-with one list call. Vercel's cleanUrls serves it at `/admin`.
+`admin.html` + `admin.js` is the desktop console (same Supabase session). App admins see every
+club (overview, clubs, members, payments, competitions, upgrades, settings); a coach (in a club's
+`profile.admins`) sees their club only. Members can be created with a login: a username becomes
+`<username>@<CFG.memberDomain>` (default `member.bjjclub.mn`) via `/auth/v1/signup`, the returned
+session is ignored; the app's sign-in accepts a bare username the same way. Member records may
+carry `comp` (competition team). Vercel's cleanUrls serves the console at `/admin`.
 
 ## Skills
 
