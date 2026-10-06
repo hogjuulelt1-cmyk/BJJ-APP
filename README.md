@@ -6,8 +6,8 @@ Static site, no build step. `index.html` holds the markup and CSS, `app.js` the 
 
 ## Setup
 
-1. Supabase: create a project (or reuse the diary's), run `supabase/schema.sql`, turn off public sign-ups, add the user.
-2. Put the project URL and anon key in `config.js`. Optional: `diary: true` mirrors sessions and the belt into the Chinbilig diary docs (same project only); `diaryUrl` shows a link to the diary in the header.
+1. Supabase: create a project, run `supabase/schema.sql`, turn off public sign-ups, add the user.
+2. Put the project URL and anon key in `config.js`.
 3. Vercel: import this repo, framework "Other". Every push to `main` deploys.
 
 ## Checks before pushing
