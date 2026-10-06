@@ -39,6 +39,10 @@ the user's own in `S.body.drills`; a done drill is a `S.body.items` row with `ca
 Tabs: Technique, Train (Log | Drills | Body), Club (Today | Schedule | Members | Pay), Me
 (Rank | Weight | Compete).
 
+`admin.html` + `admin.js` is the desktop admin console (same Supabase session; only admin emails
+get in): overview, clubs, members, payments, upgrades, settings. It reads every `club/*` doc
+with one list call. Vercel's cleanUrls serves it at `/admin`.
+
 ## Skills
 
 | Task | Skill |

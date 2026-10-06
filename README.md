@@ -19,6 +19,10 @@ Each member's techniques, rolls and logs live under `bjj/u/<uid>/…` and are pr
 
 Serve locally with `config.js` set to `window.APP_CONFIG={}` and load the page in Playwright at iPhone 13 size: no page errors, no horizontal overflow, inputs stay 16px, motion respects `prefers-reduced-motion`.
 
+## Admin console
+
+Open `/admin` (the `admin.html` page) on a computer and sign in with an email listed in `config.js` → `admins`. It shows every club, member, payment and upgrade request, lets you approve clubs, confirm payments, grant upgrades and edit the payment settings. Anyone else who signs in sees “Not an admin”. The app's Settings sheet links to it for admins.
+
 ## Store subscriptions
 
 On the web the upgrade is paid by transfer and approved by an app admin. To sell it through the
