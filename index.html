@@ -488,6 +488,24 @@ nav.tabs button.rec:active span{transform:scale(.94)}
 .qrurl{word-break:break-all;text-align:center}
 .scanbox{display:flex;flex-direction:column;gap:8px;align-items:center} .scanbox video{display:none;width:100%;max-width:340px;aspect-ratio:1;object-fit:cover;border-radius:16px;background:#000;outline:3px solid var(--accent);outline-offset:-3px} .scanbox.on video{display:block} .scanbox.on .btn{display:none} .scan-msg{text-align:center}
 .quick{display:flex;flex-wrap:wrap;gap:8px} .quick button{border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:999px;padding:8px 14px;min-height:40px;font-weight:600;font-size:.86rem}
+/* Mine / Discover (Technique tab) */
+.disc{gap:0;padding-block:4px}
+.disc-cat{display:flex;align-items:center;gap:12px;width:100%;border:0;border-top:1px solid var(--line);background:none;color:inherit;text-align:left;padding:10px 0;min-height:54px}
+.disc-cat:first-child{border-top:0}
+.disc-cat i{width:4px;height:28px;border-radius:2px;flex:none}
+.disc-cat b{flex:1;min-width:0;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.disc-cat .chev{transition:transform .25s var(--ease)} .disc-cat.open .chev{transform:rotate(90deg)}
+.disc-rows{padding-left:16px;padding-bottom:4px}
+.mrow{display:flex;align-items:center;gap:8px;border-top:1px solid var(--line)}
+.mrow-t{flex:1;min-width:0;display:flex;align-items:center;gap:12px;padding:8px 0;border:0;background:none;color:inherit;text-align:left;min-height:56px}
+.mrow-t .txt{flex:1;min-width:0} .mrow-t .txt b{display:block;font-weight:600;line-height:1.3} .mrow-t .txt small{display:block;color:var(--muted);font-size:.8rem}
+.plus{flex:none;width:36px;height:36px;border-radius:50%;border:0;background:var(--accent);color:#fff;font-size:1.35rem;line-height:1;font-weight:600;display:inline-flex;align-items:center;justify-content:center;padding:0;transition:background-color .2s var(--ease),color .2s var(--ease),transform .25s var(--ease)}
+.plus.on{background:var(--accent-soft);color:var(--accent);font-size:1rem}
+.plus:active{transform:scale(.9)}
+.btn.minepill{flex:none;font-size:.78rem;padding:4px 10px;min-height:32px;border-radius:999px;white-space:nowrap}
+.btn.minepill.on{background:var(--accent-soft);border-color:transparent;color:var(--accent)}
+.mine-empty{align-items:center;text-align:center;padding-block:28px} .mine-empty .pict.big{width:52px;height:52px;background:var(--accent-soft);border-radius:50%} .mine-empty .pict.big svg{width:28px;height:28px} .mine-empty p{max-width:30ch}
+@media (prefers-reduced-motion:reduce){.disc-cat .chev,.plus{transition:none}}
 .reclist{display:flex;flex-direction:column;gap:8px}
 .rec-opt{display:flex;align-items:center;gap:14px;width:100%;text-align:left;border:1px solid var(--line);background:var(--surface);border-radius:14px;padding:12px 14px;min-height:64px;color:inherit}
 .rec-opt .ric{width:44px;height:44px;border-radius:50%;background:var(--accent-soft);display:flex;align-items:center;justify-content:center;font-size:1.3rem;flex:none}
