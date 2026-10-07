@@ -47,11 +47,14 @@ window.BJJ_LANG = { mn: { dict: {
 "Progress":"Ахиц","Training calendar":"Бэлтгэлийн календарь","Previous month":"Өмнөх сар","Next month":"Дараагийн сар","Analytics":"Статистик","This month":"Энэ сар","Last 30 days":"30 хоног","All time":"Нийт","submissions":"submission","taps":"тап өгсөн","hours trained":"бэлтгэсэн цаг","Weekly challenges":"Долоо хоногийн сорил","Sessions this week":"Энэ долоо хоногийн бэлтгэл","Rounds across your sessions":"Бэлтгэлүүдийн нийт раунд","Any drill from the library":"Сангаас дурын дасгал","Scan the club QR at the door":"Хаалган дээрх клубын QR-ийг уншуул","Save moves you want to keep":"Хэрэгтэй мэхээ хадгал","Share a session":"Бэлтгэлээ хуваалц","Post your training card":"Бэлтгэлийн картаа хуваалц","Achievements":"Амжилтууд","First session":"Анхны бэлтгэл","Log your first training":"Анхны бэлтгэлээ бүртгэ","First share":"Анхны хуваалцалт",
 "Feed":"Мэдээ","Leaderboard":"Тэргүүлэгчид","Club leaderboard":"Клубын тэргүүлэгчид","Join your club to see who trains the most: sessions, minutes, rounds, submissions, kudos and streaks.":"Клубтаа нэгдвэл хэн хамгийн их бэлтгэдгийг харна: бэлтгэл, минут, раунд, submission, kudos, дараалал.","Sessions":"Бэлтгэл","Kudos":"Kudos","Streak":"Дараалал","2 months":"2 сар","Your rank":"Таны байр","Not ranked yet · log a training to appear":"Байр тогтоогүй · бэлтгэлээ бүртгэвэл орно","No training in the club for this period yet.":"Энэ хугацаанд клубт бэлтгэл бүртгэгдээгүй.","Open profile":"Профайл нээх","weeks":"долоо хоног",
 "Expiring":"Дуусах дөхсөн","Overdue":"Хэтэрсэн","No payment":"Төлбөргүй","Pending":"Батлах","Format":"Формат","Post 4:5":"Пост 4:5","Story 9:16":"Story 9:16","Share → Instagram → Story":"Хуваалцах → Instagram → Story",
+"Bank details":"Банкны мэдээлэл","Copy account":"Данс хуулах","Copied":"Хуулагдлаа","Monthly":"Сар бүр","Drop-in":"Нэг удаагийн","1 month":"1 сар","1 class":"1 хичээл","Months":"Сар","Price (₮)":"Үнэ (₮)","Subscription options":"Гишүүнчлэлийн сонголтууд","+ Add option":"+ Сонголт нэмэх","Name, months and price. 0 months = drop-in. Leave empty to offer 1, 3 and 6 months from the monthly fee.":"Нэр, сар, үнэ. 0 сар = нэг удаагийн. Хоосон орхивол сарын төлбөрөөс 1, 3, 6 сарын сонголт гарна.","The coach has not set the fee yet.":"Дасгалжуулагч төлбөрөө оруулаагүй байна.","For":"Юуны төлбөр",", then confirm below. Your coach checks it and marks it as paid.":", дараа нь доор баталгаажуул. Дасгалжуулагч шалгаад төлсөн гэж тэмдэглэнэ.",
 },
 /* rules: [regex, replacement]. $1… keep numbers and names. */
 rules: [
 [/^(\d+) week streak$/, "$1 долоо хоног дараалан"],
 [/^(\d+) kudos$/, "$1 kudos"],
+[/^per month ≈ (.+)$/, "сард ≈ $1"],
+[/^Pay ([\d,]+₮) · (.+)$/, "$2 · $1 төлөх"],
 [/^(\d+) rounds$/, "$1 раунд"],
 [/^out of (\d+) teammates$/, "$1 гишүүнээс"],
 [/^Paid · (\d+) days? left$/, "Төлсөн · $1 хоног үлдлээ"],
