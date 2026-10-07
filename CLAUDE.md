@@ -67,6 +67,17 @@ analytics (`UI.anaRange` month|30|all), weekly `CHALLENGES` (snapshot `S.setting
 garami, north-south top/bottom, front headlock, crucifix, under knee on belly, under scarf hold) and ~90
 moves (leg locks carry `kids:false` + `legal`).
 
+Header: avatar button (`data-act="profile"` → `VIEWS.profile`, the social profile page with `UI.prevTab` for
+Back; `profileSheet(uid)` for a teammate, opened from feed avatars via `member-profile`), centred title with
+the belt bar, ☰ `menuSheet()` (profile, progress, club, technique map, belt, share, language toggle, settings,
+coach console, sign out). Settings no longer has backup/restore. Home segments: Feed | Leaderboard
+(`vLeaderboard`, aggregates `CLUB.feed` by uid: `UI.leadBy` sessions|min|rounds|subs|kudos|streak,
+`UI.leadPer` month|all, tied ranks). Members list shows coaches a payment pill per member (`payState`:
+pending → confirm, overdue red, expiring ≤7 days amber, paid green) with Expiring/Overdue filters. Share
+card has `SHARE.fmt` post (1080×1350) | story (1080×1920, Instagram-safe margins); `SHARE.blob` is cached
+after every draw so `navigator.share` runs inside the tap (iOS), and the QR poster does the same
+(`QR_IMG`). Chip rows (`data-group`) highlight the tapped chip via `(el.parentElement||el).closest`.
+
 `admin.html` + `admin.js` is the desktop console (same Supabase session). App admins see every
 club (overview, clubs, members, payments, competitions, upgrades, settings); a coach (in a club's
 `profile.admins`) sees their club only. Members can be created with a login: a username becomes
