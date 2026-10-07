@@ -398,6 +398,7 @@ function pkSuggest(input) {
   box.innerHTML = h; box.hidden = false;
 }
 function pkAdd(key, id, n) {
+  if (key.startsWith("live-")) { liveAdd(key.slice(5), n); return; }
   const list = (UI.sheet.pk[key] = UI.sheet.pk[key] || []); const ex = list.find((x) => (id && x.id === id) || x.n === n);
   if (ex) ex.c = (ex.c || 1) + 1; else list.push({ id: id || "", n, c: 1 });
   const input = $("pki-" + key); if (input) { input.value = ""; $("pks-" + key).hidden = true; }
@@ -1052,17 +1053,17 @@ function streakLine() { const st = streaks(); const bits = []; if (st.weeks) bit
 /* Share card: a photo (or the mat) with the session, the roll path and the streak on top, like a run on Strava. */
 const SHARE = { img: null, tpl: "photo", sess: null, fmt: "post" }; /* fmt: post = 4:5 1080×1350, story = 9:16 1080×1920 */
 function shareSize() { return SHARE.fmt === "story" ? [1080, 1920] : [1080, 1350]; }
-function shareSheet(sessId) {
+function shareSheet(sessId, fmt) {
   const s = sessId ? S.log.items.find((x) => x.id === sessId) : sessionsSorted()[0]; if (!s) { toast("Log a training first"); return; }
-  SHARE.sess = s; SHARE.img = null; SHARE.tpl = "photo"; SHARE.fmt = "post";
+  SHARE.sess = s; SHARE.img = null; SHARE.tpl = "photo"; SHARE.fmt = fmt === "story" ? "story" : "post"; const sz0 = shareSize();
   const b = '<p class="small">Add a photo from the mat and share the session with its stats, your roll path and your streak.</p>' +
     '<div class="field"><label for="sh-photo" class="btn ghost" style="display:flex;align-items:center;justify-content:center">Choose a photo<input id="sh-photo" type="file" accept="image/*" capture="environment" hidden></label></div>' +
     '<div class="field"><span class="lbl">Look</span>' + chips("tpl", [["photo", "Photo"], ["mat", "Mat"], ["light", "Light"]], "photo") + "</div>" +
-    '<div class="field"><span class="lbl">Format</span>' + chips("fmt", [["post", "Post 4:5"], ["story", "Story 9:16"]], "post") + "</div>" +
-    '<canvas id="sh-cv" width="1080" height="1350" class="sharecv"></canvas>' +
+    '<div class="field"><span class="lbl">Format</span>' + chips("fmt", [["post", "Post 4:5"], ["story", "Story 9:16"]], SHARE.fmt) + "</div>" +
+    '<canvas id="sh-cv" width="' + sz0[0] + '" height="' + sz0[1] + '" class="sharecv"></canvas>' +
     '<div class="actions"><button class="btn ghost" data-act="share-save">Save image</button><button class="btn" data-act="share-send">Share</button></div>' +
     '<p class="small muted" style="text-align:center;margin:0">Share → Instagram → Story</p>';
-  openSheet("Share the session", b, { state: { picks: { tpl: "photo", fmt: "post" } } });
+  openSheet("Share the session", b, { state: { picks: { tpl: "photo", fmt: SHARE.fmt } } });
   const inp0 = $("sh-photo"); inp0.addEventListener("change", () => { const f = inp0.files && inp0.files[0]; if (!f) return; const url = URL.createObjectURL(f); const im = new Image(); im.onload = () => { SHARE.img = im; URL.revokeObjectURL(url); drawShare(); }; im.src = url; });
   drawShare();
 }
@@ -1118,7 +1119,7 @@ VIEWS.log = function () {
   const wk = mondayOf(today); const thisWk = items.filter((s) => s.d >= wk); const mo = today.slice(0, 7); const thisMo = items.filter((s) => s.d.startsWith(mo));
   const totalMin = items.reduce((a, s) => a + (+s.min || 0), 0);
   const sk = streaks();
-  let h = '<div class="card"><div class="summary"><div class="stat"><b>' + thisWk.length + '</b><span>this week</span></div><div class="stat"><b>' + sk.weeks + '</b><span>week streak</span></div><div class="stat"><b>' + (totalMin / 60).toFixed(totalMin >= 600 ? 0 : 1) + '</b><span>total hours</span></div></div>' + streakLine();
+  let h = liveCard() + '<div class="card"><div class="summary"><div class="stat"><b>' + thisWk.length + '</b><span>this week</span></div><div class="stat"><b>' + sk.weeks + '</b><span>week streak</span></div><div class="stat"><b>' + (totalMin / 60).toFixed(totalMin >= 600 ? 0 : 1) + '</b><span>total hours</span></div></div>' + streakLine();
   // minutes per week, 8 weeks
   const bars = []; let maxM = 1;
   for (let i = 7; i >= 0; i--) { const ws = addDays(wk, -7 * i); const we = addDays(ws, 7); const m = items.filter((s) => s.d >= ws && s.d < we).reduce((a, s) => a + (+s.min || 0), 0); maxM = Math.max(maxM, m); bars.push([ws, m]); }
@@ -1149,22 +1150,23 @@ VIEWS.log = function () {
   }
   return h + "</div>";
 };
-function sessSheet(id) {
-  const s = id ? S.log.items.find((x) => x.id === id) : null;
+function sessSheet(id, prefill) {
+  /* prefill: a session-shaped object (from the live tracker, `live: true`) that fills a new session's form. */
+  const s = id ? S.log.items.find((x) => x.id === id) : null; const f = s || prefill || {}; const fromLive = !s && !!(prefill && prefill.live);
   const body = () => {
-  let b = '<div class="grid2">' + field("f-d", "Date", inp("f-d", s ? s.d : todayIso(), "date", 'max="' + todayIso() + '"')) + field("f-min", "Minutes", inp("f-min", s ? s.min : 60, "number", 'inputmode="numeric" min="0" step="5"')) + "</div>";
-  b += '<div class="field"><span class="lbl">Type</span>' + chips("type", STYPES, s ? s.type : "gi") + "</div>";
-  b += '<div class="grid2">' + field("f-rolls", "Rounds (sparring)", inp("f-rolls", s ? s.rolls : "", "number", 'inputmode="numeric" min="0"')) + '<div class="field"><span class="lbl">How hard was it (1–5)</span>' + scale("rpe", s ? +s.rpe : 0, 1, 5) + "</div></div>";
-  if (CLUB.id && CLUB.members) { const me = myUid(); const ms = (CLUB.members.list || []).filter((m) => attKey(m) !== me).sort((a, b) => String(a.n || "").localeCompare(String(b.n || ""))); const sel = (UI.sheet && UI.sheet.with) || (s && s.with) || []; if (ms.length) b += '<div class="field"><span class="lbl">Rolled with</span><div class="chips">' + ms.map((m) => '<button type="button" class="chip' + (sel.includes(attKey(m)) ? " on" : "") + '" data-act="with-toggle" data-who="' + attKey(m) + '">' + esc(m.n || m.email || "Member") + "</button>").join("") + "</div></div>"; }
+  let b = '<div class="grid2">' + field("f-d", "Date", inp("f-d", f.d || todayIso(), "date", 'max="' + todayIso() + '"')) + field("f-min", "Minutes", inp("f-min", f.min || 60, "number", 'inputmode="numeric" min="0" step="5"')) + "</div>";
+  b += '<div class="field"><span class="lbl">Type</span>' + chips("type", STYPES, f.type || "gi") + "</div>";
+  b += '<div class="grid2">' + field("f-rolls", "Rounds (sparring)", inp("f-rolls", f.rolls != null ? f.rolls : "", "number", 'inputmode="numeric" min="0"')) + '<div class="field"><span class="lbl">How hard was it (1–5)</span>' + scale("rpe", f.rpe ? +f.rpe : 0, 1, 5) + "</div></div>";
+  if (CLUB.id && CLUB.members) { const me = myUid(); const ms = (CLUB.members.list || []).filter((m) => attKey(m) !== me).sort((a, b) => String(a.n || "").localeCompare(String(b.n || ""))); const sel = (UI.sheet && UI.sheet.with) || f.with || []; if (ms.length) b += '<div class="field"><span class="lbl">Rolled with</span><div class="chips">' + ms.map((m) => '<button type="button" class="chip' + (sel.includes(attKey(m)) ? " on" : "") + '" data-act="with-toggle" data-who="' + attKey(m) + '">' + esc(m.n || m.email || "Member") + "</button>").join("") + "</div></div>"; }
   b += picker("tech", "Techniques drilled", "mv", { ph: "Search techniques…" });
   b += picker("subs", "I finished", "sub", { ph: "Add a submission…", counts: true });
   b += picker("taps", "Caught me", "sub", { ph: "What caught you…", counts: true });
-  b += field("f-good", "What went well", ta("f-good", s ? s.good : "", ""));
-  b += field("f-bad", "What did not work, what to fix", ta("f-bad", s ? s.bad : "", ""));
-  b += field("f-note", "Notes", ta("f-note", s ? s.note : "", ""));
+  b += field("f-good", "What went well", ta("f-good", f.good || "", ""));
+  b += field("f-bad", "What did not work, what to fix", ta("f-bad", f.bad || "", ""));
+  b += field("f-note", "Notes", ta("f-note", f.note || "", ""));
   return b; };
-  openSheet(s ? "Edit training" : "Log training", body, {
-    state: { picks: { type: s ? s.type : "gi", rpe: s ? +s.rpe : 0 }, with: clone(s ? s.with || [] : []), pk: { tech: clone(s ? s.tech || [] : []), subs: clone(s ? s.subs || [] : []), taps: clone(s ? s.taps || [] : []) } },
+  openSheet(s ? "Edit training" : fromLive ? "Finish training" : "Log training", body, {
+    state: { picks: { type: f.type || "gi", rpe: f.rpe ? +f.rpe : 0 }, with: clone(f.with || []), pk: { tech: clone(f.tech || []), subs: clone(f.subs || []), taps: clone(f.taps || []) } },
     onSave() {
       const d = sv("f-d"); if (!d || d > todayIso()) { toast("Check the date"); return false; }
       const min = +sv("f-min"); if (!min) { $("f-min").focus(); return false; }
@@ -1172,7 +1174,7 @@ function sessSheet(id) {
       rec.d = d; rec.min = min; rec.type = pickVal("type", "gi"); rec.rolls = +sv("f-rolls") || 0; rec.rpe = pickVal("rpe", 0);
       rec.tech = UI.sheet.pk.tech || []; rec.subs = UI.sheet.pk.subs || []; rec.taps = UI.sheet.pk.taps || [];
       rec.good = sv("f-good").trim(); rec.bad = sv("f-bad").trim(); rec.note = sv("f-note").trim(); rec.with = (UI.sheet.with || []).slice();
-      if (!s) S.log.items.push(rec); save("log"); if (CLUB.id) { attMark(rec.d, true).then(() => { if (UI.tab === "club") render(); }); rollsShare(rec); feedPost(rec); } toast("Training saved"); render(); setTimeout(() => shareSheet(rec.id), 450); return true;
+      if (!s) S.log.items.push(rec); save("log"); if (fromLive) liveClear(); if (CLUB.id) { attMark(rec.d, true).then(() => { if (UI.tab === "club") render(); }); rollsShare(rec); feedPost(rec); } toast("Training saved"); render(); setTimeout(() => shareSheet(rec.id, fromLive ? "story" : null), 450); return true;
     },
     onDelete: s ? () => { S.log.items = S.log.items.filter((x) => x.id !== s.id); save("log"); feedRemove(s.id, s.d); toast("Deleted"); render(); return true; } : null,
   });
@@ -1644,6 +1646,57 @@ function weekCard() {
   let dots = ""; for (let i = 0; i < 7; i++) { const d = addDays(wk, i); dots += '<span class="' + (days.has(d) ? "on" : "") + (d === today ? " today" : "") + '"><i></i>' + DAYS[i][0] + "</span>"; }
   return '<div class="card week"><div class="card-head"><h3>Your week</h3>' + (sk.weeks ? '<span class="streak">🔥 ' + sk.weeks + " week streak</span>" : "") + '</div><div class="wdots">' + dots + '</div><div class="summary"><div class="stat"><b>' + items.length + '</b><span>sessions</span></div><div class="stat"><b>' + min + '</b><span>minutes</span></div><div class="stat"><b>' + items.reduce((a, s) => a + (+s.rolls || 0), 0) + "</b><span>rounds</span></div></div></div>";
 }
+/* ======================= LIVE TRAINING (Strava-style) =======================
+   S.settings.live = { t0 (ms), type, rolls, subs:[names], taps:[names], tech:[names], good, with:[] } while a session
+   runs (saved on every change, so it survives reloads), null otherwise. Finish opens sessSheet(null, prefill) and the
+   share card in story format; Discard needs two taps. The clock ticks only while #live-time is on screen. */
+const LIVE = { tick: null };
+function liveOn() { const l = S.settings.live; return l && l.t0 ? l : null; }
+function liveClear() { S.settings.live = null; save("settings"); }
+function liveElapsed() { const l = liveOn(); return l ? Math.max(0, Math.floor((Date.now() - l.t0) / 1000)) : 0; }
+function liveTick() { const el = $("live-time"); if (!el || !liveOn()) { clearInterval(LIVE.tick); LIVE.tick = null; return; } el.textContent = fmtT(liveElapsed()); }
+function fmtClock(ms) { const d = new Date(ms); return pad(d.getHours()) + ":" + pad(d.getMinutes()); }
+function liveNames(list) { const out = []; for (const n of list || []) { const ex = out.find((x) => x.n === n); if (ex) ex.c++; else out.push({ n, c: 1 }); } return out; }
+function liveCard() {
+  const l = liveOn();
+  if (!l) return '<button class="btn big wide live-start" data-act="live-start"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg><span>Start training</span></button>';
+  if (!LIVE.tick) LIVE.tick = setInterval(liveTick, 1000);
+  const ctr = (key, label, pick) => { const list = pick ? liveNames(l[key]) : null; return '<div class="lctr"><span class="lbl">' + label + '</span><div class="lcnt"><button type="button" class="lbtn" data-act="live-dec" data-k="' + key + '" aria-label="Remove one"' + ((pick ? l[key].length : l[key]) ? "" : " disabled") + '>−</button><b>' + (pick ? l[key].length : l[key]) + '</b><button type="button" class="lbtn plus" data-act="' + (pick ? "live-pick" : "live-inc") + '" data-k="' + key + '" aria-label="Add one">+</button></div>' +
+    (pick && list.length ? '<div class="lnames">' + list.map((x) => '<button type="button" class="chip on" data-act="live-rm" data-k="' + key + '" data-n="' + esc(x.n) + '" aria-label="Remove">' + esc(x.n) + (x.c > 1 ? " <b>×" + x.c + "</b>" : "") + "<i>×</i></button>").join("") + "</div>" : "") + "</div>"; };
+  return '<div class="card live"><div class="card-head"><h3><i class="ldot"></i>Training in progress</h3><span class="pill ok">' + esc(SNAME[l.type] || l.type) + '</span></div><div class="ltime" id="live-time">' + fmtT(liveElapsed()) + '</div><p class="muted small lstart">Started ' + fmtClock(l.t0) + "</p>" +
+    '<div class="lgrid">' + ctr("rolls", "Rounds") + ctr("subs", "Submissions", true) + ctr("taps", "Taps", true) + ctr("tech", "Techniques", true) + "</div>" +
+    '<div class="actions"><button class="btn ghost' + (UI.confirm === "live" ? " danger" : "") + '" data-act="live-discard">' + (UI.confirm === "live" ? "Discard?" : "Discard") + '</button><button class="btn" style="flex:2" data-act="live-finish">Finish</button></div></div>';
+}
+function liveRender() { const c = document.querySelector(".card.live"); if (c && liveOn()) c.outerHTML = liveCard(); else render(); }
+function liveStartSheet() {
+  if (liveOn()) { render(); return; }
+  const b = '<p class="small">Pick the type. The clock starts now; count rounds, submissions and taps as you go, then tap Finish to save and share.</p><div class="field"><span class="lbl">Type</span>' + chips("type", STYPES, "gi") + "</div>";
+  openSheet("Start training", b, { state: { picks: { type: "gi" } }, saveLabel: "Start", onSave() { S.settings.live = { t0: Date.now(), type: pickVal("type", "gi"), rolls: 0, subs: [], taps: [], tech: [], good: "", with: [] }; save("settings"); toast("Training started"); render(); return true; } });
+}
+function liveStep(key, d) { const l = liveOn(); if (!l) return; if (key === "rolls") l.rolls = Math.max(0, (+l.rolls || 0) + d); else if (d < 0) (l[key] = l[key] || []).pop(); if (navigator.vibrate && d > 0) navigator.vibrate(10); save("settings"); liveRender(); }
+function liveAdd(key, n) { const l = liveOn(); n = String(n || "").trim(); if (!l || !n) return; (l[key] = l[key] || []).push(n); if (navigator.vibrate) navigator.vibrate(10); save("settings"); if (UI.sheet) closeSheet(); liveRender(); }
+function liveRm(key, n) { const l = liveOn(); if (!l) return; const i = (l[key] || []).lastIndexOf(n); if (i >= 0) l[key].splice(i, 1); save("settings"); liveRender(); }
+function liveRecent(key) {
+  const cnt = {}; for (const s of S.log.items) for (const x of s[key] || []) cnt[x.n] = (cnt[x.n] || 0) + (+x.c || 1);
+  let names = Object.entries(cnt).sort((a, b) => b[1] - a[1]).map((x) => x[0]);
+  if (names.length < 6) { const seen = new Set(names); for (const x of pkSource(key === "tech" ? "mv" : "sub").map((x) => x.n).filter((n) => !/[→›]/.test(n)).sort((a, b) => a.length - b.length)) { if (!seen.has(x)) { seen.add(x); names.push(x); } if (names.length >= 12) break; } }
+  return names.slice(0, 12);
+}
+function livePickSheet(key) {
+  if (!liveOn()) return;
+  const title = key === "subs" ? "Add a submission" : key === "taps" ? "Add a tap" : "Add a technique"; const src = key === "tech" ? "mv" : "sub"; const ph = key === "subs" ? "Add a submission…" : key === "taps" ? "What caught you…" : "Search techniques…";
+  const recent = liveRecent(key);
+  const b = '<div class="field"><label for="pki-live-' + key + '">Name</label><input id="pki-live-' + key + '" type="text" placeholder="' + ph + '" data-pk="live-' + key + '" data-src="' + src + '" data-counts="0" autocomplete="off" autofocus><div class="sugg" id="pks-live-' + key + '" hidden></div></div>' +
+    (recent.length ? '<p class="lbl">Recent</p><div class="chips">' + recent.map((n) => '<button type="button" class="chip" data-act="live-add" data-k="' + key + '" data-n="' + esc(n) + '">' + esc(n) + "</button>").join("") + "</div>" : "") + '<p class="muted small">Type a name and pick it from the list, or add it as new.</p>';
+  openSheet(title, b, {});
+}
+function liveFinish() {
+  const l = liveOn(); if (!l) return;
+  const min = Math.max(5, Math.ceil(liveElapsed() / 300) * 5);
+  const idOf = (n) => { const q = n.toLowerCase(); const m = nodes().find((x) => x.k === "mv" && x.n.toLowerCase() === q); return m ? m.id : ""; };
+  const toPk = (names) => liveNames(names).map((x) => ({ id: idOf(x.n), n: x.n, c: x.c }));
+  sessSheet(null, { live: true, d: todayIso(), min, type: l.type, rolls: +l.rolls || 0, tech: toPk(l.tech), subs: toPk(l.subs), taps: toPk(l.taps), good: l.good || "", with: (l.with || []).slice() });
+}
 const FEED_TITLE = { gi: "Gi training", nogi: "No-gi training", open: "Open mat", priv: "Private lesson", drill: "Drilling session", comp: "Competition day" };
 function feedCard(p) {
   const me = myUid(); const ks = p.kudos || []; const mine = ks.includes(me); const tn = FEED_TITLE[p.type] || "Training";
@@ -1685,7 +1738,7 @@ function vLeaderboard() {
   return h;
 }
 VIEWS.home = function () {
-  let h = weekCard();
+  let h = liveOn() ? liveCard() + weekCard() : weekCard() + liveCard();
   if (S.settings.clubId && clubNeeds()) { if (!CLUB.busy) clubLoad(); return h + '<div class="card"><p class="empty">Loading your club…</p></div>'; }
   h += seg([["feed", "Feed"], ["lead", "Leaderboard"]], UI.homeSeg, "homeseg");
   if (UI.homeSeg === "lead") return h + vLeaderboard();
@@ -2070,6 +2123,14 @@ document.addEventListener("click", (e) => {
     case "record": checkinSheet(true); break;
     case "rec-go": closeSheet(); if (ds.v === "sess") sessSheet(); else if (ds.v === "roll") { UI.tab = "tech"; UI.tech.id = null; UI.tech.q = ""; UI.tech.view = "pos"; UI.setupEd = null; go("enter"); } else if (ds.v === "att") checkinSheet(true); else if (ds.v === "drill") { UI.tab = "me"; UI.seg.me = "drills"; go("enter"); } else if (ds.v === "share") shareSheet(null); break;
     case "kudos": feedKudos(ds.id, ds.d); break;
+    case "live-start": liveStartSheet(); break;
+    case "live-inc": liveStep(ds.k, 1); break;
+    case "live-dec": liveStep(ds.k, -1); break;
+    case "live-pick": livePickSheet(ds.k); break;
+    case "live-add": liveAdd(ds.k, ds.n); break;
+    case "live-rm": liveRm(ds.k, ds.n); break;
+    case "live-finish": liveFinish(); break;
+    case "live-discard": if (armConfirm("live")) { liveClear(); toast("Session discarded"); render(); } break;
     case "homeseg": UI.homeSeg = ds.v; render(); break;
     case "leadby": UI.leadBy = ds.v; render(); break;
     case "leadper": UI.leadPer = ds.v; render(); break;
@@ -2217,7 +2278,7 @@ document.addEventListener("submit", (e) => {
 });
 document.addEventListener("keydown", (e) => { if (e.key === "Escape" && UI.sheet) closeSheet(); });
 document.addEventListener("change", async (e) => { if (e.target.id === "att-date" && isAdmin()) { UI.attDate = e.target.value; const ym = UI.attDate.slice(0, 7); if (ym !== thisMonth() && !(CLUB.att && CLUB.att.ym === ym)) CLUB.att = { ym, doc: (await cget("club/" + CLUB.id + "/att/" + ym)) || { days: {} } }; render(); } });
-document.addEventListener("keydown", (e) => { if (e.key === "Enter" && UI.sheet && e.target.tagName === "INPUT" && !e.target.dataset.pk && e.target.type !== "textarea") { e.preventDefault(); if (UI.sheetSave && UI.sheetSave() !== false) closeSheet(); } });
+document.addEventListener("keydown", (e) => { if (e.key === "Enter" && UI.sheet && e.target.tagName === "INPUT" && String(e.target.dataset.pk || "").startsWith("live-") && e.target.value.trim()) { e.preventDefault(); liveAdd(e.target.dataset.pk.slice(5), e.target.value); return; } if (e.key === "Enter" && UI.sheet && e.target.tagName === "INPUT" && !e.target.dataset.pk && e.target.type !== "textarea") { e.preventDefault(); if (UI.sheetSave && UI.sheetSave() !== false) closeSheet(); } });
 
 /* ---------- boot ---------- */
 try { const t = localStorage.getItem("bjj-theme"); if (t && t !== "system") document.documentElement.dataset.theme = t; } catch (e) {}

@@ -503,6 +503,22 @@ nav.tabs button.rec:active span{transform:scale(.94)}
 .wdots span{display:flex;flex-direction:column;align-items:center;gap:5px;font-size:.7rem;font-weight:600;color:var(--muted);width:36px}
 .wdots i{width:28px;height:28px;border-radius:50%;background:var(--sunk);border:2px solid transparent;display:block}
 .wdots .on i{background:var(--accent);box-shadow:0 2px 8px rgba(252,82,0,.35)} .wdots .today i{border-color:var(--accent)} .wdots .today{color:var(--accent)}
+/* live training card (Start training → counters → Finish) */
+.live-start{display:flex;align-items:center;justify-content:center;gap:8px;box-shadow:0 6px 16px rgba(252,82,0,.3)} .live-start svg{width:20px;height:20px;fill:currentColor;stroke:none}
+.live{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent),var(--shadow)}
+.live .card-head{align-items:center} .live .card-head h3{display:flex;align-items:center;gap:8px}
+.ldot{width:10px;height:10px;border-radius:50%;background:var(--accent);display:inline-block;box-shadow:0 0 0 3px var(--accent-soft)}
+.ltime{font-family:var(--display);font-size:3.8rem;font-weight:600;line-height:1;font-variant-numeric:tabular-nums;letter-spacing:.02em;text-align:center;color:var(--accent)}
+.lstart{text-align:center;margin:-6px 0 0}
+.lgrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.lctr{background:var(--sunk);border-radius:12px;padding:10px;display:flex;flex-direction:column;gap:8px;min-width:0}
+.lcnt{display:flex;align-items:center;justify-content:space-between;gap:6px}
+.lcnt b{font-family:var(--display);font-size:1.8rem;font-weight:600;font-variant-numeric:tabular-nums;line-height:1}
+.lbtn{width:42px;height:42px;border-radius:50%;border:1px solid var(--line);background:var(--surface);color:var(--ink);font-size:1.35rem;font-weight:600;display:grid;place-items:center;flex:none;padding:0;line-height:1}
+.lbtn.plus{background:var(--accent);color:var(--accent-ink);border-color:transparent} .lbtn:disabled{opacity:.35}
+.lnames{display:flex;flex-wrap:wrap;gap:4px} .lnames .chip{min-height:28px;padding:3px 4px 3px 9px;font-size:.76rem;display:inline-flex;align-items:center;gap:4px;text-align:left;max-width:100%} .lnames .chip i{font-style:normal;color:var(--muted);padding:0 4px}
+@media (prefers-reduced-motion:no-preference){.ldot{animation:ldot 1.6s ease-in-out infinite}}
+@keyframes ldot{0%,100%{box-shadow:0 0 0 3px var(--accent-soft)}50%{box-shadow:0 0 0 6px var(--accent-soft)}}
 .feed{gap:10px;padding-bottom:10px} .feed h3{font-size:1.2rem} .feed .summary{border-top:1px solid var(--line);padding-top:10px}
 .fpath{display:flex;flex-wrap:wrap;align-items:center;gap:4px;font-size:.8rem;font-weight:600;background:var(--sunk);border-radius:10px;padding:8px 10px}
 .fpath span{color:var(--ink)} .fpath i{color:var(--accent);font-style:normal;font-weight:800;padding:0 2px}
