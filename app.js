@@ -182,14 +182,13 @@ async function checkinWith(code) {
   await attMark(today, true); UI.tab = "club"; UI.clubSeg = "today"; render(); toast("Checked in · " + P.n);
 }
 /* member side: the middle tab button opens the camera and scans the club QR (BarcodeDetector, else jsQR loaded on demand);
-   the club code can be typed instead. Other quick actions sit under the scanner. */
+   the club code can be typed instead. */
 let SCAN = null; const SCAN_LIB = { p: null };
 function canScan() { return !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia && (window.isSecureContext || location.hostname === "localhost")); }
 function checkinSheet(auto) {
   const P = CLUB.profile; const today = todayIso(); const inClub = !!(P && !clubNeeds());
   const b = (canScan() ? '<div class="scanbox" id="scan-box"><video id="scan-v" playsinline muted></video><p class="muted small scan-msg" id="scan-msg">Point the camera at the club QR at the door.</p><button class="btn wide" data-act="scan-start">Open the camera</button></div>' : '<p class="muted small">The camera is not available here: open the phone camera and point it at the QR instead.</p>') +
-    (inClub ? (attDays(CLUB.attMonth, myUid()).includes(today) ? '<p class="tip good">You are already checked in for today.</p>' : "") + field("ci-code", "Or type the club code", inp("ci-code", "", "text", 'autocapitalize="characters" autocomplete="off" maxlength="8" placeholder="6 characters"')) : '<p class="small">Not in a club yet? The QR at your club\'s door signs you up too.</p><button class="btn ghost wide" data-act="tab" data-v="club">Find my club</button>') +
-    '<p class="lbl" style="margin-top:6px">More</p><div class="quick"><button data-act="rec-go" data-v="sess">📝 Log training</button><button data-act="rec-go" data-v="roll">🥋 Start a roll</button><button data-act="rec-go" data-v="drill">🔁 Drills</button>' + (S.log.items.length ? '<button data-act="rec-go" data-v="share">📸 Share</button>' : "") + "</div>";
+    (inClub ? (attDays(CLUB.attMonth, myUid()).includes(today) ? '<p class="tip good">You are already checked in for today.</p>' : "") + field("ci-code", "Or type the club code", inp("ci-code", "", "text", 'autocapitalize="characters" autocomplete="off" maxlength="8" placeholder="6 characters"')) : '<p class="small">Not in a club yet? The QR at your club\'s door signs you up too.</p><button class="btn ghost wide" data-act="tab" data-v="club">Find my club</button>');
   if (!("BarcodeDetector" in window) && typeof jsQR !== "function" && !SCAN_LIB.p && canScan()) SCAN_LIB.p = loadScript("vendor/jsQR.js?v=1").catch(() => { SCAN_LIB.p = null; });
   openSheet("Check in", b, inClub ? { saveLabel: "Check in", onSave() { const t = sv("ci-code").trim().toUpperCase(); if (!t) { $("ci-code").focus(); return false; } checkinWith(t); return true; } } : {});
   if (auto && canScan()) scanStart();
@@ -328,7 +327,7 @@ function beltHtml(big) {
   const bar = b.id === "black" ? "#c62828" : "#111114";
   return '<span class="b-main">' + beltSwatch(b) + '</span><span class="b-bar" style="background:' + bar + '">' + "<i></i>".repeat(st) + "</span>";
 }
-function renderHeader() { const el = $("hdr-av"); if (!el) return; el.textContent = initials(myName()); const t = $("title"); if (t && t.textContent !== "Jiu-jitsu" && I18N.lang === "en") t.textContent = "Jiu-jitsu"; }
+function renderHeader() { const el = $("hdr-av"); if (!el) return; el.innerHTML = avatarInner(myName(), S.settings.avatar); const t = $("title"); if (t && t.textContent !== "Jiu-jitsu" && I18N.lang === "en") t.textContent = "Jiu-jitsu"; }
 function renderBelt() { const el = $("belt"); if (!el) return; el.dataset.act = "belt-page"; el.dataset.v = "open"; el.style.cursor = "pointer"; const b = beltDef(S.belt.track, S.belt.belt); el.innerHTML = beltHtml(); el.setAttribute("aria-label", b.n + " belt, " + (S.belt.stripes || 0) + " stripes"); }
 
 /* ---------- tabs & render ---------- */
@@ -1447,7 +1446,7 @@ function subCounts() { const c = {}; let n = 0; for (const s of S.log.items) for
 VIEWS.profile = function () {
   const name = myName(); const b = beltDef(S.belt.track, S.belt.belt); const sk = streaks(); const lv = levelOf(xpTotal()); const items = sessionsSorted(); const sc = subCounts();
   let h = '<div class="pf-nav"><button class="icon-btn" data-act="profile-back">‹ Back</button></div>';
-  h += '<div class="card profile pf"><div class="av xl">' + esc(initials(name)) + '</div><div><h2>' + esc(name) + '</h2><p class="handle-name">@' + esc(myHandle()) + '</p></div><span class="pill ok">Level ' + lv + "</span>" +
+  h += '<div class="card profile pf">' + avatarHtml(name, S.settings.avatar, "xl") + '<div><h2>' + esc(name) + '</h2><p class="handle-name">@' + esc(myHandle()) + '</p></div><span class="pill ok">Level ' + lv + "</span>" +
     '<div class="pf-row"><span><i>👊</i> ' + kudosFor(myUid()) + " kudos</span><span><i>🔥</i> " + sk.weeks + " week streak</span></div>" +
     '<div class="belt big" role="img" aria-label="' + esc(b.n) + ' belt">' + beltHtml(true) + '</div><p class="muted small">' + esc(b.n) + " belt" + (S.belt.stripes ? ", " + S.belt.stripes + " stripes" : "") + "</p></div>";
   h += '<div class="card"><div class="pf-kv"><span class="lbl">Gym / Academy</span><b>' + (CLUB.profile ? esc(CLUB.profile.n) : "—") + '</b></div><div class="pf-kv"><span class="lbl">Bio</span>' + (S.settings.bio ? "<p>" + esc(S.settings.bio) + "</p>" : '<p class="muted">No bio yet</p>') + '</div><button class="btn ghost wide" data-act="profile-edit">Edit</button></div>';
@@ -1457,13 +1456,23 @@ VIEWS.profile = function () {
   return h;
 };
 function profileEditSheet() {
-  const b = field("f-name", "Your name (shown to your club)", inp("f-name", S.settings.name || "", "text", 'placeholder="Name"')) + field("f-bio", "Bio", ta("f-bio", S.settings.bio || "", "A few words about you: since when you train, what you like…"));
-  openSheet("Edit profile", b, { onSave() { S.settings.name = sv("f-name").trim(); S.settings.bio = sv("f-bio").trim().slice(0, 300); save("settings"); if (CLUB.id) clubUpdateMe(); render(); return true; } });
+  const b = '<div class="avpick"><span class="av xl" id="pf-av">' + avatarInner(myName(), S.settings.avatar) + '</span><div class="avpick-b"><label for="pf-photo" class="btn ghost" style="display:flex;align-items:center;justify-content:center">Choose a photo<input id="pf-photo" type="file" accept="image/*" hidden></label><button type="button" class="btn ghost" data-act="avatar-rm"' + (S.settings.avatar ? "" : " hidden") + '>Remove photo</button></div></div>' +
+    field("f-name", "Your name (shown to your club)", inp("f-name", S.settings.name || "", "text", 'placeholder="Name"')) + field("f-bio", "Bio", ta("f-bio", S.settings.bio || "", "A few words about you: since when you train, what you like…"));
+  openSheet("Edit profile", b, { state: { av: S.settings.avatar || "" }, onSave() { S.settings.name = sv("f-name").trim(); S.settings.bio = sv("f-bio").trim().slice(0, 300); S.settings.avatar = (UI.sheet && UI.sheet.av) || ""; if (!S.settings.avatar) delete S.settings.avatar; save("settings"); if (CLUB.id) clubUpdateMe(); render(); return true; } });
+  const inp0 = $("pf-photo"); inp0.addEventListener("change", () => { const f = inp0.files && inp0.files[0]; if (!f) return; avatarFromFile(f).then((d) => { if (!UI.sheet) return; UI.sheet.av = d; avatarPreview(); }, () => toast("Could not read the photo")); inp0.value = ""; });
 }
+/* Avatar: a 96×96 centre-cropped JPEG data URL (≈3–5 KB) in S.settings.avatar, mirrored to the member record (av) and feed posts. */
+function avatarFromFile(f) {
+  return new Promise((res, rej) => { const url = URL.createObjectURL(f); const im = new Image(); im.onload = () => { URL.revokeObjectURL(url); try { const N = 96, cv = document.createElement("canvas"); cv.width = N; cv.height = N; const g = cv.getContext("2d"); const w = im.naturalWidth || im.width, h = im.naturalHeight || im.height; const c = Math.min(w, h); g.drawImage(im, (w - c) / 2, (h - c) / 2, c, c, 0, 0, N, N); res(cv.toDataURL("image/jpeg", 0.75)); } catch (e) { rej(e); } }; im.onerror = () => { URL.revokeObjectURL(url); rej(new Error("bad image")); }; im.src = url; });
+}
+function avatarPreview() { const el = $("pf-av"); if (!el || !UI.sheet) return; el.innerHTML = avatarInner(sv("f-name") || myName(), UI.sheet.av); const rm = document.querySelector('#sheet-body [data-act="avatar-rm"]'); if (rm) rm.hidden = !UI.sheet.av; }
+function avatarInner(name, av) { return av ? '<img src="' + esc(av) + '" alt="">' : esc(initials(name)); }
+function avatarHtml(name, av, cls, attrs) { const t = attrs ? "button" : "span"; return "<" + t + ' class="av' + (cls ? " " + cls : "") + '"' + (attrs ? " " + attrs : "") + ">" + avatarInner(name, av) + "</" + t + ">"; }
+function memAv(uidv) { const m = ((CLUB.members && CLUB.members.list) || []).find((x) => x.uid === uidv); return (m && m.av) || ""; }
 function profileSheet(uidv) {
   const m = ((CLUB.members && CLUB.members.list) || []).find((x) => x.uid === uidv || x.id === uidv); const posts = (CLUB.feed || []).filter((p) => p.uid === uidv);
   const name = (m && (m.n || m.email)) || (posts[0] && posts[0].n) || "Member"; const bid = (m && m.belt) || (posts[0] && posts[0].belt); const b = bid ? beltDef((m && m.track) || "adult", bid) : null; const wk = posts.length ? +posts[0].weeks || 0 : 0;
-  let h = '<div class="pf"><div class="prow" style="flex-direction:column;text-align:center;gap:6px"><div class="av xl">' + esc(initials(name)) + '</div><h2 style="font-size:1.3rem">' + esc(name) + "</h2>" + (b ? '<p class="muted small">' + esc(b.n) + " belt" + (m && m.stripes ? ", " + m.stripes + " stripes" : "") + "</p>" : "") +
+  let h = '<div class="pf"><div class="prow" style="flex-direction:column;text-align:center;gap:6px">' + avatarHtml(name, (m && m.av) || (posts[0] && posts[0].av) || "", "xl") + '<h2 style="font-size:1.3rem">' + esc(name) + "</h2>" + (b ? '<p class="muted small">' + esc(b.n) + " belt" + (m && m.stripes ? ", " + m.stripes + " stripes" : "") + "</p>" : "") +
     '<div class="pf-row"><span><i>👊</i> ' + kudosFor(uidv) + " kudos</span><span><i>🥋</i> " + posts.length + " sessions</span>" + (wk ? "<span><i>🔥</i> " + wk + " week streak</span>" : "") + "</div></div></div>";
   h += '<div class="list">' + (posts.length ? posts.slice(0, 3).map((p) => '<div class="row"><div class="txt"><b>' + (FEED_TITLE[p.type] || "Training") + "</b><small>" + fmtLong(p.d) + " · " + (+p.min || 0) + " min" + (p.rounds ? " · " + p.rounds + " rounds" : "") + "</small></div>" + ((p.kudos || []).length ? '<span class="muted small">👊 ' + p.kudos.length + "</span>" : "") + "</div>").join("") : '<p class="empty">No training posted yet</p>') + "</div>";
   openSheet("Profile", h, {});
@@ -1600,7 +1609,7 @@ VIEWS.prog = function () {
 function profileHead() {
   const name = myName(); const b = beltDef(S.belt.track, S.belt.belt); const items = S.log.items; const totalMin = items.reduce((a, x) => a + (+x.min || 0), 0); const sk = streaks();
   const ms = CLUB.id && !clubNeeds() ? membership(myUid()) : null;
-  return '<div class="card profile"><div class="prow"><div class="av">' + esc(initials(name)) + '</div><div class="pinfo"><h2>' + esc(name) + '</h2><p class="muted small">' + (CLUB.profile ? esc(CLUB.profile.n) + " · " : "") + esc(b.n) + " belt" + (S.belt.stripes ? " · " + S.belt.stripes + " stripes" : "") + "</p></div>" +
+  return '<div class="card profile"><div class="prow">' + avatarHtml(name, S.settings.avatar) + '<div class="pinfo"><h2>' + esc(name) + '</h2><p class="muted small">' + (CLUB.profile ? esc(CLUB.profile.n) + " · " : "") + esc(b.n) + " belt" + (S.belt.stripes ? " · " + S.belt.stripes + " stripes" : "") + "</p></div>" +
     (ms && ms.state !== "none" ? '<span class="pill ' + (ms.state === "active" ? "ok" : "bad") + '">' + (ms.state === "active" ? "Active" : "Expired") + "</span>" : "") + "</div>" +
     '<div class="summary"><div class="stat"><b>' + items.length + '</b><span>sessions</span></div><div class="stat"><b>' + hoursFmt(totalMin) + '</b><span>hours</span></div><div class="stat"><b>' + sk.weeks + '</b><span>week streak</span></div></div>' + xpCard() + "</div>";
 }
@@ -1611,7 +1620,7 @@ VIEWS.me = function () { const v = UI.seg.me || "prog"; const map = { prog: VIEW
 function memName(k) { const m = ((CLUB.members && CLUB.members.list) || []).find((x) => attKey(x) === k); return m ? m.n || m.email || "Member" : "Someone"; }
 function feedPostOf(rec) {
   const roll = S.rolls.items.filter((r) => r.d === rec.d).sort((a, b) => (a.id < b.id ? 1 : -1))[0];
-  return { id: rec.id, uid: myUid(), n: myName(), belt: S.belt.belt, d: rec.d, type: rec.type, min: +rec.min || 0, rounds: +rec.rolls || 0, tech: (rec.tech || []).slice(0, 5).map((t) => t.n || t), subs: (rec.subs || []).length, good: rec.good || "", with: (rec.with || []).map(memName), weeks: streaks().weeks, path: roll ? roll.steps.filter((x) => x.k !== "fin" && x.id !== "finish").map((x) => x.n).slice(0, 8) : [], kudos: [], t: Date.now() };
+  return { id: rec.id, uid: myUid(), n: myName(), av: S.settings.avatar || "", belt: S.belt.belt, d: rec.d, type: rec.type, min: +rec.min || 0, rounds: +rec.rolls || 0, tech: (rec.tech || []).slice(0, 5).map((t) => t.n || t), subs: (rec.subs || []).length, good: rec.good || "", with: (rec.with || []).map(memName), weeks: streaks().weeks, path: roll ? roll.steps.filter((x) => x.k !== "fin" && x.id !== "finish").map((x) => x.n).slice(0, 8) : [], kudos: [], t: Date.now() };
 }
 function feedMerged() { const out = []; for (const ym in CLUB.feedDocs || {}) out.push(...(CLUB.feedDocs[ym].list || [])); return out.sort((a, b) => (a.d < b.d ? 1 : a.d > b.d ? -1 : (b.t || 0) - (a.t || 0))); }
 function feedCache(ym, doc) { CLUB.feedDocs = CLUB.feedDocs || {}; CLUB.feedDocs[ym] = doc; CLUB.feed = feedMerged(); }
@@ -1638,7 +1647,7 @@ function weekCard() {
 const FEED_TITLE = { gi: "Gi training", nogi: "No-gi training", open: "Open mat", priv: "Private lesson", drill: "Drilling session", comp: "Competition day" };
 function feedCard(p) {
   const me = myUid(); const ks = p.kudos || []; const mine = ks.includes(me); const tn = FEED_TITLE[p.type] || "Training";
-  let h = '<article class="card feed"><div class="prow"><button class="av sm" data-act="member-profile" data-uid="' + esc(p.uid || "") + '" aria-label="Open profile">' + esc(initials(p.n)) + '</button><div class="pinfo"><b>' + esc(p.n || "Member") + '</b><p class="muted small">' + fmtLong(p.d) + (CLUB.profile ? " · " + esc(CLUB.profile.n) : "") + "</p></div>" + (p.weeks > 1 ? '<span class="streak" title="Week streak">🔥 ' + p.weeks + "</span>" : "") + "</div>";
+  let h = '<article class="card feed"><div class="prow">' + avatarHtml(p.n, p.av || memAv(p.uid), "sm", 'data-act="member-profile" data-uid="' + esc(p.uid || "") + '" aria-label="Open profile"') + '<div class="pinfo"><b>' + esc(p.n || "Member") + '</b><p class="muted small">' + fmtLong(p.d) + (CLUB.profile ? " · " + esc(CLUB.profile.n) : "") + "</p></div>" + (p.weeks > 1 ? '<span class="streak" title="Week streak">🔥 ' + p.weeks + "</span>" : "") + "</div>";
   h += "<h3>" + esc(tn) + "</h3>" + (p.good ? '<p class="small">' + esc(p.good) + "</p>" : "");
   h += '<div class="summary"><div class="stat"><b>' + p.min + '</b><span>minutes</span></div><div class="stat"><b>' + p.rounds + '</b><span>rounds</span></div><div class="stat"><b>' + ((p.tech && p.tech.length) || 0) + "</b><span>techniques</span></div></div>";
   if (p.path && p.path.length) h += '<div class="fpath">' + p.path.map((n) => "<span>" + esc(n) + "</span>").join("<i>›</i>") + "</div>";
@@ -1653,19 +1662,19 @@ function leadRows() {
   const by = UI.leadBy, mo = thisMonth(); const posts = (CLUB.feed || []).filter((p) => p.uid && (UI.leadPer === "all" || String(p.d || "").startsWith(mo)));
   const M = {}; const later = (p, r) => !r.d || p.d > r.d || (p.d === r.d && (p.t || 0) > (r.t || 0));
   for (const p of posts) {
-    const r = M[p.uid] || (M[p.uid] = { uid: p.uid, n: "", belt: "", v: 0, d: "", t: 0 });
+    const r = M[p.uid] || (M[p.uid] = { uid: p.uid, n: "", belt: "", av: "", v: 0, d: "", t: 0 });
     if (by === "streak") { if (later(p, r)) r.v = +p.weeks || 0; } else r.v += by === "sessions" ? 1 : by === "kudos" ? (p.kudos || []).length : +p[by] || 0;
-    if (later(p, r)) { r.d = p.d; r.t = p.t || 0; if (p.n) r.n = p.n; if (p.belt) r.belt = p.belt; }
+    if (later(p, r)) { r.d = p.d; r.t = p.t || 0; if (p.n) r.n = p.n; if (p.belt) r.belt = p.belt; if (p.av) r.av = p.av; }
   }
   const mem = (CLUB.members && CLUB.members.list) || [];
-  const rows = Object.values(M).map((r) => { const m = mem.find((x) => x.uid === r.uid); if (m) { if (!r.n) r.n = m.n || ""; if (!r.belt) r.belt = m.belt || ""; } r.n = r.n || "Member"; return r; });
+  const rows = Object.values(M).map((r) => { const m = mem.find((x) => x.uid === r.uid); if (m) { if (!r.n) r.n = m.n || ""; if (!r.belt) r.belt = m.belt || ""; if (m.av) r.av = m.av; } r.n = r.n || "Member"; return r; });
   rows.sort((a, b) => b.v - a.v || a.n.localeCompare(b.n)); let rank = 0;
   rows.forEach((r, i) => { if (!i || r.v !== rows[i - 1].v) rank = i + 1; r.rank = rank; });
   return rows;
 }
 function leadRow(r, me, unit) {
   const b = r.belt ? beltDef("adult", r.belt) : null; const cls = r.rank <= 3 ? " r" + r.rank : "";
-  return '<div class="lrow' + (r.uid === me ? " me" : "") + '"><span class="rank' + cls + '">' + r.rank + '</span><button class="av sm" data-act="member-profile" data-uid="' + esc(r.uid) + '" aria-label="Open profile">' + esc(initials(r.n)) + '</button><div class="txt"><b>' + esc(r.n) + "</b>" + (b ? '<span class="bsw" title="' + esc(b.n) + '">' + beltSwatch(b) + "</span>" : "") + '</div><span class="val"><b>' + r.v + "</b><small>" + unit + "</small></span></div>";
+  return '<div class="lrow' + (r.uid === me ? " me" : "") + '"><span class="rank' + cls + '">' + r.rank + '</span>' + avatarHtml(r.n, r.av, "sm", 'data-act="member-profile" data-uid="' + esc(r.uid) + '" aria-label="Open profile"') + '<div class="txt"><b>' + esc(r.n) + "</b>" + (b ? '<span class="bsw" title="' + esc(b.n) + '">' + beltSwatch(b) + "</span>" : "") + '</div><span class="val"><b>' + r.v + "</b><small>" + unit + "</small></span></div>";
 }
 function vLeaderboard() {
   if (!CLUB.id) return '<div class="card"><h3>Club leaderboard</h3><p class="small muted">Join your club to see who trains the most: sessions, minutes, rounds, submissions, kudos and streaks.</p><button class="btn wide" data-act="tab" data-v="club">Find my club</button></div>';
@@ -1743,7 +1752,7 @@ async function clubUpdateMe() {
   if (m.coachSet) { // the coach's record wins
     if (m.belt) S.belt.belt = m.belt; S.belt.stripes = +m.stripes || 0; if (m.track) S.belt.track = m.track; if (m.beltSince) S.belt.since = m.beltSince; S.belt.byCoach = true; save("belt");
   } else { m.belt = S.belt.belt; m.stripes = S.belt.stripes; m.track = S.belt.track; }
-  if (!m.coachSet || !m.n) m.n = myName(); m.email = SB.session ? SB.session.email : (m.email || "");
+  if (!m.coachSet || !m.n) m.n = myName(); m.av = S.settings.avatar || ""; m.email = SB.session ? SB.session.email : (m.email || "");
   await cset("club/" + CLUB.id + "/members", CLUB.members);
 }
 function memberSheet(id) {
@@ -2047,6 +2056,7 @@ document.addEventListener("click", (e) => {
   switch (act) {
     case "tab": { const order = TABS.map((t) => t[0]); const anim = order.indexOf(ds.v) > order.indexOf(UI.tab) ? "enter-l" : "enter-r"; UI.tab = ds.v; try { localStorage.setItem("bjj-tab", ds.v); } catch (x) {} go(anim); break; }
     case "settings": settingsSheet(); break;
+    case "avatar-rm": if (UI.sheet) { UI.sheet.av = ""; avatarPreview(); } break;
     case "menu": menuSheet(); break;
     case "profile": if (UI.sheet) closeSheet(); if (UI.tab !== "profile") { UI.prevTab = UI.tab; UI.tab = "profile"; go("enter-l"); } break;
     case "profile-back": UI.tab = UI.prevTab && VIEWS[UI.prevTab] && UI.prevTab !== "profile" ? UI.prevTab : "home"; UI.prevTab = null; go("enter-r"); break;
