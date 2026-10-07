@@ -78,6 +78,17 @@ card has `SHARE.fmt` post (1080×1350) | story (1080×1920, Instagram-safe margi
 after every draw so `navigator.share` runs inside the tap (iOS), and the QR poster does the same
 (`QR_IMG`). Chip rows (`data-group`) highlight the tapped chip via `(el.parentElement||el).closest`.
 
+Live training (`S.settings.live`: t0, type, rolls, subs/taps/tech names): "Start training" button on Home
+and You → Log (`liveCard`), counters with pickers (`livePickSheet`, `data-pk="live-*"`), Finish →
+`sessSheet(null, prefill)` → save clears it and opens the share card in story format
+(`shareSheet(id, "story")`). Profile photo: `S.settings.avatar` (96px JPEG data URL), mirrored to the
+member record `av` and feed posts `av`; `avatarHtml(name, av, cls, attrs)` renders it everywhere.
+Club plans: `P.plans` `[{id, n, months, price, kind}]` (defaults from `fee` via `clubPlans`), plan cards on
+the Pay tab (`UI.payPlan`), a payment creates one `pay` item per covered month sharing a `group`
+(`confirmPay` confirms the group; drop-ins carry `drop:true` and never count as a month); bank details
+(`payHow`) sit on the Pay tab with a copy button. The check-in sheet has no shortcut row any more.
+`vercel.json` sends `x-vercel-skip-toolbar: 1` so previews show no Vercel overlay.
+
 `admin.html` + `admin.js` is the desktop console (same Supabase session). App admins see every
 club (overview, clubs, members, payments, competitions, upgrades, settings); a coach (in a club's
 `profile.admins`) sees their club only. Members can be created with a login: a username becomes
