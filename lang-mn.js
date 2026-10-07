@@ -46,6 +46,7 @@ window.BJJ_LANG = { mn: { dict: {
 "Menu":"Цэс","My profile":"Миний профайл","Technique map":"Техникийн зураг","Belt and rank":"Бүс, зэрэг","Coach console":"Дасгалжуулагчийн консол","Profile":"Профайл","Edit profile":"Профайл засах","‹ Back":"‹ Буцах","Bio":"Тухай","No bio yet":"Тухай бичээгүй","Gym / Academy":"Клуб / Академи","Recent sessions":"Сүүлийн бэлтгэлүүд","Top submissions":"Шилдэг submission-ууд","No sessions yet":"Бэлтгэл алга","No submissions yet":"Submission алга","No training posted yet":"Бэлтгэл оруулаагүй","A few words about you: since when you train, what you like…":"Өөрийнхөө тухай хэдэн үг: хэзээнээс бэлтгэж байгаа, юунд дуртай…",
 "Progress":"Ахиц","Training calendar":"Бэлтгэлийн календарь","Previous month":"Өмнөх сар","Next month":"Дараагийн сар","Analytics":"Статистик","This month":"Энэ сар","Last 30 days":"30 хоног","All time":"Нийт","submissions":"submission","taps":"тап өгсөн","hours trained":"бэлтгэсэн цаг","Weekly challenges":"Долоо хоногийн сорил","Sessions this week":"Энэ долоо хоногийн бэлтгэл","Rounds across your sessions":"Бэлтгэлүүдийн нийт раунд","Any drill from the library":"Сангаас дурын дасгал","Scan the club QR at the door":"Хаалган дээрх клубын QR-ийг уншуул","Save moves you want to keep":"Хэрэгтэй мэхээ хадгал","Share a session":"Бэлтгэлээ хуваалц","Post your training card":"Бэлтгэлийн картаа хуваалц","Achievements":"Амжилтууд","First session":"Анхны бэлтгэл","Log your first training":"Анхны бэлтгэлээ бүртгэ","First share":"Анхны хуваалцалт",
 "Feed":"Мэдээ","Leaderboard":"Тэргүүлэгчид","Club leaderboard":"Клубын тэргүүлэгчид","Join your club to see who trains the most: sessions, minutes, rounds, submissions, kudos and streaks.":"Клубтаа нэгдвэл хэн хамгийн их бэлтгэдгийг харна: бэлтгэл, минут, раунд, submission, kudos, дараалал.","Sessions":"Бэлтгэл","Kudos":"Kudos","Streak":"Дараалал","2 months":"2 сар","Your rank":"Таны байр","Not ranked yet · log a training to appear":"Байр тогтоогүй · бэлтгэлээ бүртгэвэл орно","No training in the club for this period yet.":"Энэ хугацаанд клубт бэлтгэл бүртгэгдээгүй.","Open profile":"Профайл нээх","weeks":"долоо хоног",
+"Expiring":"Дуусах дөхсөн","Overdue":"Хэтэрсэн","No payment":"Төлбөргүй","Pending":"Батлах","Format":"Формат","Post 4:5":"Пост 4:5","Story 9:16":"Story 9:16","Share → Instagram → Story":"Хуваалцах → Instagram → Story",
 },
 /* rules: [regex, replacement]. $1… keep numbers and names. */
 rules: [
@@ -53,6 +54,8 @@ rules: [
 [/^(\d+) kudos$/, "$1 kudos"],
 [/^(\d+) rounds$/, "$1 раунд"],
 [/^out of (\d+) teammates$/, "$1 гишүүнээс"],
+[/^Paid · (\d+) days? left$/, "Төлсөн · $1 хоног үлдлээ"],
+[/^Overdue (\d+) days?$/, "$1 хоног хэтэрсэн"],
 [/^Mine \((\d+)\)$/, "Миний ($1)"],
 [/^from (\d+) positions$/, "$1 байрлалаас"],
 [/^(\d+) techniques$/, "$1 мэх"],
