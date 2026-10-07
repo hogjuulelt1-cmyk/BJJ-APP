@@ -519,6 +519,9 @@ nav.tabs button.rec:active span{transform:scale(.94)}
 .chal{flex:none;width:220px;display:flex;flex-direction:column;gap:6px;background:var(--sunk);border:1px solid transparent;border-radius:14px;padding:12px;scroll-snap-align:start} .chal b{font-size:.95rem;line-height:1.25} .chal small{color:var(--muted);font-size:.78rem;line-height:1.3} .chal .pbar{margin-top:auto} .chal .chrow{display:flex;justify-content:space-between;align-items:center} .chal .chic{font-size:1.4rem;line-height:1} .chal .chxp{font-size:.72rem;font-weight:700;color:var(--accent);background:var(--accent-soft);padding:2px 8px;border-radius:999px} .chal .chfoot{display:flex;justify-content:space-between;align-items:center;font-size:.8rem;font-weight:600;color:var(--muted);font-variant-numeric:tabular-nums;min-height:22px}
 .chal.done{border-color:var(--ok);background:var(--ok-soft)} .chal.done .pbar i{background:var(--ok)} .chal.done .chxp{background:var(--ok);color:#fff}
 .ach .achic{width:40px;height:40px;border-radius:12px;background:var(--sunk);display:grid;place-items:center;font-size:1.3rem;flex:none} .ach.locked{opacity:.5} .ach.locked .achic{filter:grayscale(1)} .ach .pill{flex:none}
+/* members: payment pill on each row (coach) */
+.pill.payp{flex:none;cursor:pointer;max-width:62%;overflow:hidden;text-overflow:ellipsis} .pill.pend{background:transparent;color:#1f56d9;border:1.5px solid currentColor;padding:1px 8px}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .pill.pend{color:#5b8dff}} :root[data-theme="dark"] .pill.pend{color:#5b8dff}
 .toast{position:fixed;left:50%;bottom:calc(84px + env(safe-area-inset-bottom,0px));transform:translate(-50%,20px);background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:999px;font-size:.88rem;font-weight:600;opacity:0;pointer-events:none;z-index:40;max-width:calc(100% - 32px)}
 .toast.show{opacity:1;transform:translate(-50%,0)}
 
