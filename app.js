@@ -1630,7 +1630,7 @@ function weekCard() {
 const FEED_TITLE = { gi: "Gi training", nogi: "No-gi training", open: "Open mat", priv: "Private lesson", drill: "Drilling session", comp: "Competition day" };
 function feedCard(p) {
   const me = myUid(); const ks = p.kudos || []; const mine = ks.includes(me); const tn = FEED_TITLE[p.type] || "Training";
-  let h = '<article class="card feed"><div class="prow"><div class="av sm">' + esc(initials(p.n)) + '</div><div class="pinfo"><b>' + esc(p.n || "Member") + '</b><p class="muted small">' + fmtLong(p.d) + (CLUB.profile ? " · " + esc(CLUB.profile.n) : "") + "</p></div>" + (p.weeks > 1 ? '<span class="streak" title="Week streak">🔥 ' + p.weeks + "</span>" : "") + "</div>";
+  let h = '<article class="card feed"><div class="prow"><button class="av sm" data-act="member-profile" data-uid="' + esc(p.uid || "") + '" aria-label="Open profile">' + esc(initials(p.n)) + '</button><div class="pinfo"><b>' + esc(p.n || "Member") + '</b><p class="muted small">' + fmtLong(p.d) + (CLUB.profile ? " · " + esc(CLUB.profile.n) : "") + "</p></div>" + (p.weeks > 1 ? '<span class="streak" title="Week streak">🔥 ' + p.weeks + "</span>" : "") + "</div>";
   h += "<h3>" + esc(tn) + "</h3>" + (p.good ? '<p class="small">' + esc(p.good) + "</p>" : "");
   h += '<div class="summary"><div class="stat"><b>' + p.min + '</b><span>minutes</span></div><div class="stat"><b>' + p.rounds + '</b><span>rounds</span></div><div class="stat"><b>' + ((p.tech && p.tech.length) || 0) + "</b><span>techniques</span></div></div>";
   if (p.path && p.path.length) h += '<div class="fpath">' + p.path.map((n) => "<span>" + esc(n) + "</span>").join("<i>›</i>") + "</div>";
@@ -1638,9 +1638,40 @@ function feedCard(p) {
   h += '<div class="kudos"><button class="kbtn' + (mine ? " on" : "") + '" data-act="kudos" data-id="' + esc(p.id) + '" data-d="' + esc(p.d) + '"' + (p.uid === me ? " disabled" : "") + '><i>👊</i> ' + (mine ? "Kudos given" : "Give kudos") + '</button><span class="muted small">' + ks.length + " kudos</span></div></article>";
   return h;
 }
+/* Leaderboard: CLUB.feed aggregated per member. UI.leadBy = metric, UI.leadPer = month | all (this and last month, everything loaded). */
+UI.homeSeg = "feed"; UI.leadBy = "sessions"; UI.leadPer = "month";
+const LEAD_BY = [["sessions", "Sessions", "sessions"], ["min", "Minutes", "minutes"], ["rounds", "Rounds", "rounds"], ["subs", "Submissions", "submissions"], ["kudos", "Kudos", "kudos"], ["streak", "Streak", "weeks"]];
+function leadRows() {
+  const by = UI.leadBy, mo = thisMonth(); const posts = (CLUB.feed || []).filter((p) => p.uid && (UI.leadPer === "all" || String(p.d || "").startsWith(mo)));
+  const M = {}; const later = (p, r) => !r.d || p.d > r.d || (p.d === r.d && (p.t || 0) > (r.t || 0));
+  for (const p of posts) {
+    const r = M[p.uid] || (M[p.uid] = { uid: p.uid, n: "", belt: "", v: 0, d: "", t: 0 });
+    if (by === "streak") { if (later(p, r)) r.v = +p.weeks || 0; } else r.v += by === "sessions" ? 1 : by === "kudos" ? (p.kudos || []).length : +p[by] || 0;
+    if (later(p, r)) { r.d = p.d; r.t = p.t || 0; if (p.n) r.n = p.n; if (p.belt) r.belt = p.belt; }
+  }
+  const mem = (CLUB.members && CLUB.members.list) || [];
+  const rows = Object.values(M).map((r) => { const m = mem.find((x) => x.uid === r.uid); if (m) { if (!r.n) r.n = m.n || ""; if (!r.belt) r.belt = m.belt || ""; } r.n = r.n || "Member"; return r; });
+  rows.sort((a, b) => b.v - a.v || a.n.localeCompare(b.n)); let rank = 0;
+  rows.forEach((r, i) => { if (!i || r.v !== rows[i - 1].v) rank = i + 1; r.rank = rank; });
+  return rows;
+}
+function leadRow(r, me, unit) {
+  const b = r.belt ? beltDef("adult", r.belt) : null; const cls = r.rank <= 3 ? " r" + r.rank : "";
+  return '<div class="lrow' + (r.uid === me ? " me" : "") + '"><span class="rank' + cls + '">' + r.rank + '</span><button class="av sm" data-act="member-profile" data-uid="' + esc(r.uid) + '" aria-label="Open profile">' + esc(initials(r.n)) + '</button><div class="txt"><b>' + esc(r.n) + "</b>" + (b ? '<span class="bsw" title="' + esc(b.n) + '">' + beltSwatch(b) + "</span>" : "") + '</div><span class="val"><b>' + r.v + "</b><small>" + unit + "</small></span></div>";
+}
+function vLeaderboard() {
+  if (!CLUB.id) return '<div class="card"><h3>Club leaderboard</h3><p class="small muted">Join your club to see who trains the most: sessions, minutes, rounds, submissions, kudos and streaks.</p><button class="btn wide" data-act="tab" data-v="club">Find my club</button></div>';
+  const rows = leadRows(); const me = myUid(); const mine = rows.find((r) => r.uid === me); const unit = (LEAD_BY.find((x) => x[0] === UI.leadBy) || LEAD_BY[0])[2];
+  let h = '<div class="card lead"><div class="chips">' + LEAD_BY.map((x) => '<button type="button" class="chip' + (UI.leadBy === x[0] ? " on" : "") + '" data-act="leadby" data-v="' + x[0] + '">' + x[1] + "</button>").join("") + "</div>" + seg([["month", "This month"], ["all", "2 months"]], UI.leadPer, "leadper") + "</div>";
+  h += '<div class="card yrank"><span class="lbl">Your rank</span>' + (mine ? '<div class="yr"><b class="rk' + (mine.rank <= 3 ? " r" + mine.rank : "") + '">#' + mine.rank + '</b><div class="stat"><b>' + mine.v + "</b><span>" + unit + '</span></div><span class="muted small of">out of ' + rows.length + " teammates</span></div>" : '<p class="muted small" style="margin-top:4px">Not ranked yet · log a training to appear</p>') + "</div>";
+  h += '<div class="card"><h3>' + esc(CLUB.profile ? CLUB.profile.n : "Club") + "</h3>" + (rows.length ? '<div class="llist">' + rows.map((r) => leadRow(r, me, unit)).join("") + "</div>" : '<p class="empty">No training in the club for this period yet.</p>') + "</div>";
+  return h;
+}
 VIEWS.home = function () {
   let h = weekCard();
   if (S.settings.clubId && clubNeeds()) { if (!CLUB.busy) clubLoad(); return h + '<div class="card"><p class="empty">Loading your club…</p></div>'; }
+  h += seg([["feed", "Feed"], ["lead", "Leaderboard"]], UI.homeSeg, "homeseg");
+  if (UI.homeSeg === "lead") return h + vLeaderboard();
   const posts = CLUB.id ? CLUB.feed || [] : sessionsSorted().slice(0, 20).map(feedPostOf);
   if (!posts.length) h += '<div class="card"><p class="empty">' + (CLUB.id ? "No training in the club yet. Log the first one!" : "Join a club to see your teammates' training here.") + "</p>" + (CLUB.id ? '<button class="btn wide" data-act="add-sess">+ Log training</button>' : '<button class="btn wide" data-act="tab" data-v="club">Find my club</button>') + "</div>";
   else h += posts.slice(0, 40).map(feedCard).join("");
@@ -2012,6 +2043,9 @@ document.addEventListener("click", (e) => {
     case "record": checkinSheet(true); break;
     case "rec-go": closeSheet(); if (ds.v === "sess") sessSheet(); else if (ds.v === "roll") { UI.tab = "tech"; UI.tech.id = null; UI.tech.q = ""; UI.tech.view = "pos"; UI.setupEd = null; go("enter"); } else if (ds.v === "att") checkinSheet(true); else if (ds.v === "drill") { UI.tab = "me"; UI.seg.me = "drills"; go("enter"); } else if (ds.v === "share") shareSheet(null); break;
     case "kudos": feedKudos(ds.id, ds.d); break;
+    case "homeseg": UI.homeSeg = ds.v; render(); break;
+    case "leadby": UI.leadBy = ds.v; render(); break;
+    case "leadper": UI.leadPer = ds.v; render(); break;
     case "mine-toggle": { const on = ds.on === "1"; mineToggle(ds.ids.split(","), on); toast(on ? "Added to my list" : "Removed from my list"); render(); break; }
     case "mine-rm": mineToggle(ds.ids.split(","), false); render(); break;
     case "disc-cat": { const o = (UI.discOpen = UI.discOpen || new Set()); if (o.has(ds.v)) o.delete(ds.v); else o.add(ds.v); render(); break; }
