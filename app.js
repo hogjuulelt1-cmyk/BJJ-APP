@@ -412,8 +412,10 @@ VIEWS.tech = function () {
   let h = '<div class="search"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg><input id="tq" type="search" placeholder="Search positions, techniques…" value="' + esc(UI.tech.q) + '" autocomplete="off"></div>';
   if (UI.tech.q.trim().length >= 2) return h + vSearch(UI.tech.q.trim().toLowerCase());
   if (UI.setupEd) return vSetupEdit();
-  if (!["pos", "setups", "learn", "plans", "rolls"].includes(UI.tech.view)) UI.tech.view = "pos";
-  h += seg([["pos", "Roll"], ["setups", "Setups"], ["learn", "Learn"], ["plans", "Plans"], ["rolls", "History"]], UI.tech.view, "techview");
+  if (!["pos", "mine", "disc", "setups", "learn", "plans", "rolls"].includes(UI.tech.view)) UI.tech.view = "pos";
+  h += seg([["pos", "Roll"], ["mine", "Mine (" + mineIds().length + ")"], ["disc", "Discover"], ["setups", "Setups"], ["learn", "Learn"], ["plans", "Plans"], ["rolls", "History"]], UI.tech.view, "techview", true);
+  if (UI.tech.view === "mine") return h + vMine();
+  if (UI.tech.view === "disc") return h + vDiscover();
   if (["setups", "learn", "plans", "rolls"].includes(UI.tech.view) && !unlocked()) { if (clubNeeds() && !CLUB.busy) clubLoad(); return h + lockCard({ setups: "Setups", learn: "Learn", plans: "Game plans", rolls: "Roll history" }[UI.tech.view]); }
   if (UI.tech.view === "setups") return h + vSetups();
   if (UI.tech.view === "learn") return h + vLearn();
@@ -440,11 +442,52 @@ function vSearch(q) {
   if (!res.length) return '<div class="card"><p class="empty">Nothing found. Try another word.</p></div>';
   return '<div class="card"><div class="list">' + res.map((n) => { const a = ancestors(n.id); const crumb = a.slice(0, -1).map((x) => x.n).join(" › "); return '<button class="node-row' + (n.k === "df" ? " df" : "") + '" data-act="open" data-id="' + n.id + '"><span class="pict" style="color:' + nodeColor(n) + '">' + iconFor(n) + '</span><div class="txt"><b>' + esc(n.n) + "</b><small>" + esc(crumb || n.en || kindLabel(n)) + "</small></div>" + tbadge(n) + CHEV + "</button>"; }).join("") + "</div></div>";
 }
+/* Mine / Discover: a FlowRoll-style technique list. S.settings.mine holds node ids; Discover groups distinct names. */
+const DISC_CATS = [["sub", "Submission"], ["sweep", "Sweep"], ["td", "Takedown"], ["pass", "Guard pass"], ["esc", "Escape"], ["trans", "Transition"], ["ctl", "Control"], ["grip", "Grip"], ["pos:guard", "Guard positions"], ["pos:top", "Top positions"]];
+const DISC_LABEL = Object.fromEntries(DISC_CATS.concat(CATS.map(([c, l]) => ["pos:" + c, l])));
+function discColor(key) { return key.startsWith("pos:") ? CAT_COLOR[key.slice(4)] || "var(--ink)" : typeColor(key); }
+function discCatOf(n) { return n.k === "pos" ? "pos:" + (n.cat || "guard") : n.k === "mv" ? n.t || "trans" : null; }
+function mineIds() { const st = S.settings; if (!Array.isArray(st.mine)) st.mine = []; return st.mine; }
+function mineHas(ids) { const m = mineIds(); return ids.every((id) => m.includes(id)); }
+function mineToggle(ids, on) { const m = mineIds(); for (const id of ids) { const i = m.indexOf(id); if (on && i < 0) m.push(id); if (!on && i >= 0) m.splice(i, 1); } save("settings"); }
+/* distinct names per category: { key: [{ n, en, ids, pos }] } */
+function discGroups(list) {
+  const g = {};
+  for (const n of list || nodes()) { const key = discCatOf(n); if (!key) continue; const k = n.n.trim().toLowerCase(); const byName = (g[key] = g[key] || {}); const e = byName[k] || (byName[k] = { n: n.n, en: n.en || "", ids: [], pos: [] }); e.ids.push(n.id); if (n.k === "mv") { const p = posOf(n.id); if (p && !e.pos.includes(p.n)) e.pos.push(p.n); } }
+  const out = {}; for (const k in g) out[k] = Object.values(g[k]).sort((a, b) => a.n.localeCompare(b.n)); return out;
+}
+function plusBtn(ids) { const on = mineHas(ids); return '<button type="button" class="plus' + (on ? " on" : "") + '" data-act="mine-toggle" data-ids="' + ids.join(",") + '" data-on="' + (on ? 0 : 1) + '" aria-label="' + (on ? "Remove from mine" : "Add to mine") + '">' + (on ? "✓" : "+") + "</button>"; }
+function mineRow(r, key, remove) {
+  const first = node(r.ids[0]); const sub = key.startsWith("pos:") ? "" : r.pos.length > 1 ? (remove ? r.pos.join(" · ") : "from " + r.pos.length + " positions") : r.pos[0] || "";
+  return '<div class="mrow"><button type="button" class="mrow-t" data-act="open" data-id="' + r.ids[0] + '"><span class="pict" style="color:' + discColor(key) + '">' + iconFor(first) + '</span><div class="txt"><b>' + esc(r.n) + "</b>" + (sub ? "<small>" + esc(sub) + "</small>" : "") + "</div></button>" + (remove ? '<button type="button" class="x" data-act="mine-rm" data-ids="' + r.ids.join(",") + '" aria-label="Remove from mine">✕</button>' : plusBtn(r.ids)) + "</div>";
+}
+function vDiscover() {
+  const q = (UI.discQ || "").trim().toLowerCase(); const G = discGroups(); const open = (UI.discOpen = UI.discOpen || new Set());
+  let h = '<div class="search"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg><input id="dq" type="search" placeholder="Search techniques…" value="' + esc(UI.discQ || "") + '" autocomplete="off"></div>';
+  h += '<div class="card disc">'; let any = false;
+  for (const [key, label] of DISC_CATS) {
+    let rows = G[key] || []; if (q) rows = rows.filter((r) => r.n.toLowerCase().includes(q) || r.en.toLowerCase().includes(q));
+    if (!rows.length) continue; any = true; const on = q ? true : open.has(key);
+    h += '<button type="button" class="disc-cat' + (on ? " open" : "") + '" data-act="disc-cat" data-v="' + key + '" aria-expanded="' + on + '"><i style="background:' + discColor(key) + '"></i><b>' + label + '</b><span class="cnt">' + rows.length + "</span>" + CHEV + "</button>";
+    if (on) h += '<div class="disc-rows">' + rows.map((r) => mineRow(r, key)).join("") + "</div>";
+  }
+  if (!any) h += '<p class="empty">Nothing found. Try another word.</p>';
+  return h + "</div>";
+}
+function vMine() {
+  const list = mineIds().map(node).filter(Boolean);
+  if (!list.length) return '<div class="card mine-empty"><span class="pict big" style="color:var(--accent)">' + svgIcon(TICON.sub) + '</span><h3>My techniques</h3><p class="small muted">Pick the techniques you are working on. They show up here, and Learn can quiz you on them.</p><button class="btn" data-act="techview" data-v="disc">Go to Discover</button></div>';
+  const G = discGroups(list); const keys = DISC_CATS.map((c) => c[0]).concat(Object.keys(G).filter((k) => !DISC_CATS.some((c) => c[0] === k)));
+  let h = '<div class="card"><div class="card-head"><h3>My techniques</h3><span class="muted small">' + list.length + " techniques</span></div><div class=\"list\">";
+  for (const key of keys) { const rows = G[key]; if (!rows || !rows.length) continue; h += '<div class="group-label" style="color:' + discColor(key) + '">' + (DISC_LABEL[key] || key) + " · " + rows.length + "</div>" + rows.map((r) => mineRow(r, key, true)).join(""); }
+  h += '</div><button class="btn wide" data-act="mine-learn">Quiz these in Learn</button><button class="btn ghost wide" data-act="techview" data-v="disc">+ Add more from Discover</button></div>';
+  return h;
+}
 function vNode(n) {
   const path = ancestors(n.id); const ch = kids(n.id); const back = n.p ? n.p : "";
   let h = '<button class="back" data-act="back" data-id="' + back + '"><svg viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></svg>' + (n.p ? esc(node(n.p).n) : "Positions") + "</button>";
   h += '<div class="card"><div class="path">' + path.map((x, i) => '<button class="pn ' + x.k + (i === path.length - 1 ? " cur" : "") + '" data-act="open" data-id="' + x.id + '"><span class="rail"><i></i></span><span class="pt"><span class="k">' + kindLabel(x) + '</span><span class="nm">' + esc(x.n) + "</span></span></button>").join("") + "</div>";
-  h += '<div class="actions" style="align-items:center">' + tbadge(n) + (n.en ? '<span class="muted small" style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + esc(n.en) + "</span>" : '<span style="flex:1"></span>') + '<button class="btn ghost" style="flex:none" data-act="edit-node" data-id="' + n.id + '">Edit</button></div>';
+  h += '<div class="actions" style="align-items:center">' + tbadge(n) + (n.en ? '<span class="muted small" style="flex:1 1 0;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + esc(n.en) + "</span>" : '<span style="flex:1 1 0"></span>') + (n.k !== "df" ? '<button class="btn ghost minepill' + (mineHas([n.id]) ? " on" : "") + '" data-act="mine-toggle" data-ids="' + n.id + '" data-on="' + (mineHas([n.id]) ? 0 : 1) + '">' + (mineHas([n.id]) ? "✓ In my list" : "+ Add to mine") + "</button>" : "") + '<button class="btn ghost" style="flex:none" data-act="edit-node" data-id="' + n.id + '">Edit</button></div>';
   { const mb = metaBadges(n, true); if (mb) h += '<div class="meta">' + mb + "</div>"; }
   if (n.k === "pos" && n.them) h += '<p class="small"><span class="muted">Them:</span> ' + esc(n.them) + "</p>";
   if (n.k === "mv" && n.when) h += '<p class="small"><span class="muted">Opens when:</span> ' + esc(n.when) + "</p>";
@@ -1846,6 +1889,10 @@ document.addEventListener("click", (e) => {
     case "record": checkinSheet(true); break;
     case "rec-go": closeSheet(); if (ds.v === "sess") sessSheet(); else if (ds.v === "roll") { UI.tab = "tech"; UI.tech.id = null; UI.tech.q = ""; UI.tech.view = "pos"; UI.setupEd = null; go("enter"); } else if (ds.v === "att") checkinSheet(true); else if (ds.v === "drill") { UI.tab = "me"; UI.seg.me = "drills"; go("enter"); } else if (ds.v === "share") shareSheet(null); break;
     case "kudos": feedKudos(ds.id, ds.d); break;
+    case "mine-toggle": { const on = ds.on === "1"; mineToggle(ds.ids.split(","), on); toast(on ? "Added to my list" : "Removed from my list"); render(); break; }
+    case "mine-rm": mineToggle(ds.ids.split(","), false); render(); break;
+    case "disc-cat": { const o = (UI.discOpen = UI.discOpen || new Set()); if (o.has(ds.v)) o.delete(ds.v); else o.add(ds.v); render(); break; }
+    case "mine-learn": UI.tech.view = "learn"; UI.tech.id = null; UI.rollId = null; go("enter-l"); break;
     case "auth-mode": showLogin("", ds.v === "up"); break;
     case "club-reload": CLUB.loadedFor = null; render(); break;
     case "club-new": clubSheet(false); break;
@@ -1969,6 +2016,7 @@ function armConfirmSheet(btn) { if (btn.dataset.armed) return true; btn.dataset.
 document.addEventListener("input", (e) => {
   const t = e.target;
   if (t.id === "tq") { UI.tech.q = t.value; const m = $("main"); const h = VIEWS.tech(); m.innerHTML = h; initGraphs(); const q = $("tq"); if (q) { q.focus(); q.setSelectionRange(q.value.length, q.value.length); } return; }
+  if (t.id === "dq") { UI.discQ = t.value; const m = $("main"); m.innerHTML = VIEWS.tech(); initGraphs(); const q = $("dq"); if (q) { q.focus(); q.setSelectionRange(q.value.length, q.value.length); } return; }
   if (t.dataset.pk) { pkSuggest(t); return; }
   if (t.dataset.tcfg) { const v = +t.value; if (v >= 0) { S.settings.timer[t.dataset.tcfg] = v; save("settings"); if (!T.on && !T.left) renderTimer(); } return; }
 });
