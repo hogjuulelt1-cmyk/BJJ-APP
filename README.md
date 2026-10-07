@@ -40,6 +40,13 @@ up with the same email and joins with the club code, the two records link and th
 the member's belt. Attendance comes from the member's check-in, their logged training, or the coach's
 attendance list; medals a member records wait for the coach's approval.
 
+## Home feed and the Record button
+
+The layout follows Strava: Home shows the club feed (one card per teammate's training with minutes,
+rounds, techniques, the day's roll path and the streak; 👊 kudos), the orange button in the middle of
+the tab bar records (log training, start a roll, check in, do a drill, share), and You holds the
+profile with the personal sections. Feed posts are club docs at `club/<id>/feed/<yyyy-mm>`.
+
 ## Language
 
 The app and the console open in Mongolian. Settings → Language (or the button in the console sidebar) switches to English. Strings live in `lang-mn.js`: exact text in `dict`, text with numbers or names in `rules`. Technique, position and drill names come from the `en` field of the data.

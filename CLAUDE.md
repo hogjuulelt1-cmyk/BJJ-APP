@@ -39,8 +39,13 @@ as app admin. Club docs also hold `att/<yyyy-mm>` (attendance, keyed by uid or r
 `IAP` wraps a Capacitor/RevenueCat or `window.IAP` purchase bridge; without one the upgrade sheet
 falls back to a transfer. Drills: `SEED.drills` (kind solo|partner|sub|td|esc|flow, `tech` names link to moves by name) plus
 the user's own in `S.body.drills`; a done drill is a `S.body.items` row with `cat: "drill"`.
-Tabs: Technique, Train (Log | Drills | Body), Club (Today | Schedule | Members | Pay), Me
-(Rank | Weight | Compete).
+Tabs (Strava-like, orange accent): Home (club feed), Technique, a round Record button in the
+middle (`recordSheet`: log training, start a roll, check in, drill, share), Club (Today | Schedule |
+Members | Pay), You (`profileHead` + scrollable segments Log | Drills | Body | Rank | Weight |
+Compete; `TAB_ALIAS` maps the old `train` tab and segment ids to `me`). The feed lives in
+`club/<id>/feed/<yyyy-mm>` (`feedPost` on every saved training: minutes, rounds, techniques, the
+day's roll path, streak, `kudos` uids); `clubLoad` reads this and last month, `feedKudos` toggles 👊.
+Without a club the Home tab shows the user's own sessions.
 
 `admin.html` + `admin.js` is the desktop console (same Supabase session). App admins see every
 club (overview, clubs, members, payments, competitions, upgrades, settings); a coach (in a club's
