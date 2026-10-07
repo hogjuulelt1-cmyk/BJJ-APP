@@ -46,6 +46,11 @@ Compete; `TAB_ALIAS` maps the old `train` tab and segment ids to `me`). The feed
 `club/<id>/feed/<yyyy-mm>` (`feedPost` on every saved training: minutes, rounds, techniques, the
 day's roll path, streak, `kudos` uids); `clubLoad` reads this and last month, `feedKudos` toggles 👊.
 Without a club the Home tab shows the user's own sessions.
+Join by QR: a coach (or app admin) opens Club → "Join QR for members" (`qrSheet`): a QR (`qr.js`, own
+encoder, byte mode/level M/versions 1-9) for `<app>?join=<clubId>&c=<club code>`, plus copy, share and a
+saved poster image. The boot code keeps the pair in localStorage `bjj-join` and strips it from the URL;
+the sign-in screen opens in sign-up mode with a "You are joining …" banner, and `joinPending()` joins
+the club once the session is ready (asks first when the person is already in another club).
 
 `admin.html` + `admin.js` is the desktop console (same Supabase session). App admins see every
 club (overview, clubs, members, payments, competitions, upgrades, settings); a coach (in a club's

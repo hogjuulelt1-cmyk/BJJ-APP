@@ -47,6 +47,13 @@ rounds, techniques, the day's roll path and the streak; 👊 kudos), the orange 
 the tab bar records (log training, start a roll, check in, do a drill, share), and You holds the
 profile with the personal sections. Feed posts are club docs at `club/<id>/feed/<yyyy-mm>`.
 
+## Join by QR
+
+Coaches open Club → "Join QR for members" and show or print the code (Save image makes a poster).
+A member scans it with the phone camera, creates an account (a plain username works) and lands in
+the club. The link is `<app>?join=<clubId>&c=<club code>`; a closed club needs the right code, which
+the QR already carries.
+
 ## Language
 
 The app and the console open in Mongolian. Settings → Language (or the button in the console sidebar) switches to English. Strings live in `lang-mn.js`: exact text in `dict`, text with numbers or names in `rules`. Technique, position and drill names come from the `en` field of the data.
