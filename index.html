@@ -488,6 +488,16 @@ nav.tabs button.rec:active span{transform:scale(.94)}
 .qrurl{word-break:break-all;text-align:center}
 .scanbox{display:flex;flex-direction:column;gap:8px;align-items:center} .scanbox video{display:none;width:100%;max-width:340px;aspect-ratio:1;object-fit:cover;border-radius:16px;background:#000;outline:3px solid var(--accent);outline-offset:-3px} .scanbox.on video{display:block} .scanbox.on .btn{display:none} .scan-msg{text-align:center}
 .quick{display:flex;flex-wrap:wrap;gap:8px} .quick button{border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:999px;padding:8px 14px;min-height:40px;font-weight:600;font-size:.86rem}
+button.av{border:0;padding:0;cursor:pointer;font:inherit;font-family:var(--display);font-weight:700}
+.lead{gap:10px} .lead .seg{margin-top:2px}
+.yrank{gap:4px} .yr{display:flex;align-items:center;gap:14px} .yr .rk{width:56px;height:56px;border-radius:50%;background:var(--sunk);color:var(--muted);display:flex;align-items:center;justify-content:center;font-family:var(--display);font-size:1.35rem;font-weight:700;line-height:1;font-variant-numeric:tabular-nums;flex:none} .yr .of{margin-left:auto;text-align:right}
+.rank{width:28px;height:28px;border-radius:50%;background:var(--sunk);color:var(--muted);display:flex;align-items:center;justify-content:center;font-family:var(--display);font-weight:700;font-size:.9rem;flex:none;font-variant-numeric:tabular-nums}
+.rank.r1,.rk.r1{background:linear-gradient(145deg,#ffd75e,#e0a500);color:#3b2a00} .rank.r2,.rk.r2{background:linear-gradient(145deg,#e7eaf0,#aab2c0);color:#2a2f3a} .rank.r3,.rk.r3{background:linear-gradient(145deg,#e8a56b,#b86a2c);color:#3a1f08}
+.llist{display:flex;flex-direction:column} .lrow{display:flex;align-items:center;gap:10px;padding:8px 0;border-top:1px solid var(--line);min-height:56px} .lrow:first-child{border-top:0}
+.lrow .txt{flex:1;min-width:0;display:flex;flex-direction:column;gap:4px} .lrow .txt b{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;line-height:1.3}
+.lrow .bsw{display:flex;width:36px;height:10px;border-radius:2px;border:1px solid var(--line);overflow:hidden} .lrow .bsw i{flex:1}
+.lrow .val{display:flex;flex-direction:column;align-items:flex-end;flex:none} .lrow .val b{font-family:var(--display);font-size:1.25rem;font-weight:600;line-height:1.1;font-variant-numeric:tabular-nums} .lrow .val small{font-size:.68rem;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;font-weight:600}
+.lrow.me{background:var(--accent-soft);margin:0 -16px;padding-left:16px;padding-right:16px;border-radius:12px;border-top-color:transparent} .lrow.me+.lrow{border-top-color:transparent}
 /* Mine / Discover (Technique tab) */
 .disc{gap:0;padding-block:4px}
 .disc-cat{display:flex;align-items:center;gap:12px;width:100%;border:0;border-top:1px solid var(--line);background:none;color:inherit;text-align:left;padding:10px 0;min-height:54px}
