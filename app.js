@@ -1856,7 +1856,7 @@ async function clubLeave() {
 function fmtMoney(v) { v = +v || 0; return v.toLocaleString("en-US") + "₮"; }
 function lastPaid(uid) { const p = CLUB.pay[uid]; if (!p || !p.items.length) return null; return p.items.slice().sort((a, b) => (a.per < b.per ? 1 : -1))[0]; }
 function membership(uid) {
-  const p = CLUB.pay[uid]; const ok = p ? p.items.filter((x) => x.status !== "pending").map((x) => x.per).sort() : []; const last = ok[ok.length - 1]; const today = todayIso();
+  const p = CLUB.pay[uid]; const ok = p ? p.items.filter((x) => x.status !== "pending" && !x.drop).map((x) => x.per).sort() : []; const last = ok[ok.length - 1]; const today = todayIso();
   if (!last) return { state: "none", text: "No payment yet", days: null };
   const y = +last.slice(0, 4), m = +last.slice(5); const end = new Date(y, m, 0); const endIso = end.getFullYear() + "-" + pad(end.getMonth() + 1) + "-" + pad(end.getDate()); const days = daysBetween(today, endIso);
   if (days >= 0) return { state: "active", text: days === 0 ? "Expires today" : "Expires in " + days + " day" + (days > 1 ? "s" : ""), days, until: endIso };
@@ -1864,6 +1864,25 @@ function membership(uid) {
 }
 function paidThisMonth(uid) { const p = CLUB.pay[uid]; return !!(p && p.items.some((x) => x.per === thisMonth() && x.status !== "pending")); }
 function pendingPay(uid) { const p = CLUB.pay[uid]; return p ? p.items.filter((x) => x.status === "pending") : []; }
+/* subscription options: P.plans [{id, n, months, price, kind sub|drop}] or defaults from fee */
+function clubPlans(P) {
+  P = P || {}; if (P.plans && P.plans.length) return P.plans.filter((p) => +p.price > 0);
+  const fee = P.fee || {}; const m = +fee.month || 0; const r = (v) => Math.round(v / 1000) * 1000; const out = [];
+  if (m > 0) out.push({ id: "m1", n: "", months: 1, price: m, kind: "sub" }, { id: "m3", n: "", months: 3, price: r(3 * m * 0.9), kind: "sub" }, { id: "m6", n: "", months: 6, price: r(6 * m * 0.85), kind: "sub" });
+  if (+fee.drop > 0) out.push({ id: "drop", n: "", months: 0, price: +fee.drop, kind: "drop" });
+  return out.filter((p) => p.price > 0);
+}
+function planName(p) { return (p && p.n) || (!p || p.kind === "drop" || !p.months ? "Drop-in" : p.months === 1 ? "Monthly" : p.months + " months"); }
+function planOf(id) { return clubPlans(CLUB.profile).find((p) => p.id === id) || null; }
+function addMonth(ym, n) { const d = new Date(+ym.slice(0, 4), +ym.slice(5) - 1 + n, 1); return d.getFullYear() + "-" + pad(d.getMonth() + 1); }
+/* one label for a payment item or a group of items: Drop-in · 3 months · plan name */
+function payLabel(x, n) { if (x.drop) return "Drop-in"; if (n > 1) return n + " months"; const p = x.plan && planOf(x.plan); return p ? planName(p) : ""; }
+function payGroups(items) { const out = []; items.forEach((x) => { const g = x.group && out.find((o) => o.group === x.group); if (g) { g.items.push(x); g.amt += +x.amt || 0; if (x.per > g.to) g.to = x.per; if (x.per < g.per) g.per = x.per; } else out.push({ id: x.id, group: x.group, items: [x], amt: +x.amt || 0, per: x.per, to: x.per, d: x.d, note: x.note, status: x.status, drop: x.drop, plan: x.plan }); }); return out; }
+/* bank details block (.payhow); copy = add the "Copy account" button */
+function payHow(P, copy) {
+  const pay = P.pay || {}; if (!(pay.bank || pay.account || pay.qpay)) return '<p class="small muted">The coach has not added payment details yet. Pay at the club, then tap “I have paid” so it shows up here.</p>';
+  return '<div class="payhow">' + (pay.bank ? "<div><span>Bank</span><b>" + esc(pay.bank) + "</b></div>" : "") + (pay.account ? '<div class="acc"><span>Account</span><b>' + esc(pay.account) + "</b></div>" : "") + (pay.holder ? "<div><span>Name</span><b>" + esc(pay.holder) + "</b></div>" : "") + (pay.qpay ? "<div><span>QPay</span><b>" + esc(pay.qpay) + "</b></div>" : "") + (pay.note ? '<p class="small muted">' + esc(pay.note) + "</p>" : "") + (copy && pay.account ? '<button type="button" class="btn ghost" data-act="pay-copy" data-v="' + esc(pay.account) + '">Copy account</button>' : "") + "</div>";
+}
 function nextOpenMat(sched) {
   const d = new Date(); const dow = (d.getDay() + 6) % 7; const open = (sched || []).filter((x) => x.kind === "open");
   if (!open.length) return null; let best = null; for (const x of open) { let diff = (x.d - dow + 7) % 7; if (diff === 0 && x.t < d.toTimeString().slice(0, 5)) diff = 7; if (!best || diff < best.diff) best = { diff, x }; }
@@ -1968,28 +1987,36 @@ async function resultSubmit(ev) {
   await cset("club/" + CLUB.id + "/results", CLUB.results);
 }
 function vClubPay(P, adm) {
-  const me = myUid(); const mine = (CLUB.pay[me] && CLUB.pay[me].items || []).slice().sort((a, b) => (a.d < b.d ? 1 : -1)); const ok = paidThisMonth(me); const pend = pendingPay(me).some((x) => x.per === thisMonth());
-  const ms = membership(me);
-  let h = '<div class="card"><div class="card-head"><h3>My membership</h3><span class="pill ' + (ms.state === "active" ? "ok" : pend ? "na" : "warn") + '">' + (ms.state === "active" ? ms.text : pend ? "Waiting for the coach" : ms.state === "expired" ? ms.text : "Not paid yet") + '</span></div><p class="muted small">Monthly fee ' + fmtMoney(P.fee && P.fee.month) + (P.fee && P.fee.drop ? " · drop-in " + fmtMoney(P.fee.drop) : "") + "</p>";
+  const me = myUid(); const mine = payGroups((CLUB.pay[me] && CLUB.pay[me].items || []).slice().sort((a, b) => (a.d < b.d ? 1 : a.d > b.d ? -1 : a.per < b.per ? -1 : 1))); const pend = pendingPay(me).some((x) => x.per === thisMonth());
+  const ms = membership(me); const plans = clubPlans(P); const sel = plans.find((p) => p.id === UI.payPlan) || plans[0];
+  let h = '<div class="card"><div class="card-head"><h3>My membership</h3><span class="pill ' + (ms.state === "active" ? "ok" : pend ? "na" : "warn") + '">' + (ms.state === "active" ? ms.text : pend ? "Waiting for the coach" : ms.state === "expired" ? ms.text : "Not paid yet") + "</span></div>";
+  if (plans.length) h += '<div class="plans">' + plans.map((p) => '<button type="button" class="planc' + (sel && sel.id === p.id ? " on" : "") + '" data-act="pay-plan" data-v="' + esc(p.id) + '" aria-pressed="' + (sel && sel.id === p.id) + '"><b>' + esc(planName(p)) + "</b>" + (() => { const ml = p.kind === "drop" || !p.months ? "1 class" : p.months === 1 ? "1 month" : p.months + " months"; return p.n ? "<small>" + ml + "</small>" : p.months > 1 ? "" : "<small>" + ml + "</small>"; })() + '<span class="price">' + fmtMoney(p.price) + "</span>" + (p.months > 1 ? "<small>per month ≈ " + fmtMoney(Math.round(p.price / p.months)) + "</small>" : "") + "</button>").join("") + "</div>";
+  else h += '<p class="muted small">The coach has not set the fee yet.</p>';
   if (!mine.length) h += '<p class="empty">No payments yet. Pay the monthly fee here and your coach confirms it.</p>';
-  else h += '<div class="list">' + mine.map((x) => '<button class="row" data-act="club-pay" data-id="' + x.id + '"><span class="pill ' + (x.status === "pending" ? "na" : "ok") + '">' + (x.status === "pending" ? "sent" : "confirmed") + '</span><div class="txt"><b>' + fmtMoney(x.amt) + " · " + esc(x.per) + "</b><small>" + fmtD(x.d) + (x.note ? " · " + esc(x.note) : "") + "</small></div>" + CHEV + "</button>").join("") + "</div>";
-  h += '<button class="btn wide" data-act="club-paynow">' + (ok ? "Pay next month" : "Pay " + fmtMoney(P.fee && P.fee.month) + " for " + thisMonth()) + "</button></div>";
+  else h += '<div class="list">' + mine.map((x) => { const n = x.items.length; const lb = payLabel(x, n); return '<button class="row" data-act="club-pay" data-id="' + x.id + '"><span class="pill ' + (x.status === "pending" ? "na" : "ok") + '">' + (x.status === "pending" ? "sent" : "confirmed") + '</span><div class="txt"><b>' + fmtMoney(x.amt) + " · " + (x.drop ? esc(tr(lb)) : n > 1 ? esc(tr(lb)) : esc(x.per)) + "</b><small>" + (n > 1 ? esc(x.per) + " → " + esc(x.to) + " · " : "") + fmtD(x.d) + (lb && !x.drop && n === 1 ? " · " + esc(tr(lb)) : "") + (x.note ? " · " + esc(x.note) : "") + "</small></div>" + CHEV + "</button>"; }).join("") + "</div>";
+  if (sel) h += '<button class="btn wide" data-act="club-paynow">' + "Pay " + fmtMoney(sel.price) + " · " + esc(tr(planName(sel))) + "</button>";
+  h += "</div>";
+  h += '<div class="card"><div class="card-head"><h3>Bank details</h3></div>' + payHow(P, true) + "</div>";
   if (adm) {
     const ms = (CLUB.members.list || []).slice().sort((a, b) => (paidThisMonth(a.uid) === paidThisMonth(b.uid) ? 0 : paidThisMonth(a.uid) ? 1 : -1));
-    h += '<div class="card"><div class="card-head"><h3>Who has paid · ' + thisMonth() + '</h3><span class="muted small">' + ms.filter((m) => paidThisMonth(m.uid)).length + " / " + ms.length + "</span></div><div class=\"list\">" + ms.map((m) => { const lp = lastPaid(m.uid); const ok = paidThisMonth(m.uid); const pp = pendingPay(m.uid); return '<div class="row"><span class="pill ' + (ok ? "ok" : pp.length ? "warn" : "bad") + '">' + (ok ? "paid" : pp.length ? "check" : "due") + '</span><div class="txt"><b>' + esc(m.n || m.email || "Member") + "</b><small>" + (pp.length ? "says paid " + esc(pp[0].per) + " · " + fmtMoney(pp[0].amt) + (pp[0].note ? " · " + esc(pp[0].note) : "") : lp ? "last: " + esc(lp.per) + " · " + fmtMoney(lp.amt) : "never") + "</small></div>" + (pp.length ? '<button class="btn" style="flex:none" data-act="club-confirm" data-uid="' + m.uid + '" data-id="' + pp[0].id + '">Confirm</button>' : '<button class="btn ghost" style="flex:none" data-act="club-pay" data-uid="' + m.uid + '">Log fee</button>') + "</div>"; }).join("") + "</div></div>";
+    h += '<div class="card"><div class="card-head"><h3>Who has paid · ' + thisMonth() + '</h3><span class="muted small">' + ms.filter((m) => paidThisMonth(m.uid)).length + " / " + ms.length + "</span></div><div class=\"list\">" + ms.map((m) => { const lp = lastPaid(m.uid); const ok = paidThisMonth(m.uid); const pp = pendingPay(m.uid); const pg = pp.length ? payGroups(pp)[0] : null; const lb = pg ? payLabel(pg, pg.items.length) : ""; return '<div class="row"><span class="pill ' + (ok ? "ok" : pp.length ? "warn" : "bad") + '">' + (ok ? "paid" : pp.length ? "check" : "due") + '</span><div class="txt"><b>' + esc(m.n || m.email || "Member") + "</b><small>" + (pg ? "says paid " + (pg.drop ? fmtD(pg.d) : esc(pg.per) + (pg.items.length > 1 ? " → " + esc(pg.to) : "")) + " · " + fmtMoney(pg.amt) + (lb ? " · " + esc(tr(lb)) : "") + (pg.note ? " · " + esc(pg.note) : "") : lp ? "last: " + esc(lp.per) + " · " + fmtMoney(lp.amt) : "never") + "</small></div>" + (pg ? '<button class="btn" style="flex:none" data-act="club-confirm" data-uid="' + m.uid + '" data-id="' + pg.id + '">Confirm</button>' : '<button class="btn ghost" style="flex:none" data-act="club-pay" data-uid="' + m.uid + '">Log fee</button>') + "</div>"; }).join("") + "</div></div>";
   }
   return h;
 }
 function payNowSheet() {
-  const P = CLUB.profile; const me = myUid(); const per = paidThisMonth(me) ? thisMonth().slice(0, 4) + "-" + pad((+thisMonth().slice(5) % 12) + 1) : thisMonth(); const pay = P.pay || {}; const amt = (P.fee && P.fee.month) || 0;
-  const how = pay.bank || pay.account || pay.qpay ? '<div class="payhow">' + (pay.bank ? "<div><span>Bank</span><b>" + esc(pay.bank) + "</b></div>" : "") + (pay.account ? "<div><span>Account</span><b>" + esc(pay.account) + "</b></div>" : "") + (pay.holder ? "<div><span>Name</span><b>" + esc(pay.holder) + "</b></div>" : "") + (pay.qpay ? '<div><span>QPay</span><b>' + esc(pay.qpay) + "</b></div>" : "") + (pay.note ? '<p class="small muted">' + esc(pay.note) + "</p>" : "") + "</div>" : '<p class="small muted">The coach has not added payment details yet. Pay at the club, then tap “I have paid” so it shows up here.</p>';
-  const b = '<p class="small">Transfer <b>' + fmtMoney(amt) + "</b> for <b>" + esc(per) + "</b>, then confirm below. Your coach checks it and your month is marked as paid.</p>" + how + '<div class="grid2">' + field("p-per", "For month", inp("p-per", per, "month")) + field("p-amt", "Amount (₮)", inp("p-amt", amt, "number", 'inputmode="numeric"')) + "</div>" + field("p-note", "Note", inp("p-note", "", "text", 'placeholder="transfer / cash / QPay"'));
+  const P = CLUB.profile; const me = myUid(); const plans = clubPlans(P); const plan = plans.find((p) => p.id === UI.payPlan) || plans[0] || { id: "m1", n: "", months: 1, price: (P.fee && P.fee.month) || 0, kind: "sub" };
+  const drop = plan.kind === "drop" || !plan.months; const items = (CLUB.pay[me] && CLUB.pay[me].items) || []; const pers = items.filter((x) => !x.drop && x.per >= thisMonth()).map((x) => x.per).sort(); const start = pers.length ? addMonth(pers[pers.length - 1], 1) : thisMonth();
+  const b = '<p class="small">Transfer <b>' + fmtMoney(plan.price) + "</b> · <b>" + esc(tr(planName(plan))) + "</b>, then confirm below. Your coach checks it and marks it as paid.</p>" + payHow(P, true) +
+    (drop ? '<div class="field"><label>For</label><p class="small" style="margin:0"><b>Drop-in · ' + fmtD(todayIso()) + "</b></p></div>" : '<div class="grid2">' + field("p-per", "For month", inp("p-per", start, "month")) + field("p-months", "Months", inp("p-months", plan.months, "number", 'inputmode="numeric" min="1" max="24"')) + "</div>") +
+    '<div class="grid2">' + field("p-amt", "Amount (₮)", inp("p-amt", plan.price, "number", 'inputmode="numeric"')) + field("p-note", "Note", inp("p-note", "", "text", 'placeholder="transfer / cash / QPay"')) + "</div>";
   openSheet("Pay " + P.n, b, { saveLabel: "I have paid", async onSave() {
-    const doc = CLUB.pay[me] || { items: [] }; doc.items.push({ id: uid(), d: todayIso(), per: sv("p-per") || per, amt: +sv("p-amt") || amt, note: sv("p-note").trim(), by: me, status: "pending" }); CLUB.pay[me] = doc; await cset("club/" + P.id + "/pay/" + me, doc); toast("Sent to your coach"); render(); return true;
+    const doc = CLUB.pay[me] || { items: [] }; const months = drop ? 1 : Math.min(24, Math.max(1, Math.round(+sv("p-months") || plan.months || 1))); const total = +sv("p-amt") || plan.price || 0; const per0 = drop ? thisMonth() : sv("p-per") || start; const group = uid(); const each = Math.floor(total / months); const note = sv("p-note").trim(); const d = todayIso();
+    for (let i = 0; i < months; i++) { const it = { id: uid(), d, per: drop ? per0 : addMonth(per0, i), amt: i ? each : total - each * (months - 1), note, by: me, status: "pending", plan: plan.id, group }; if (drop) it.drop = true; doc.items.push(it); }
+    CLUB.pay[me] = doc; await cset("club/" + P.id + "/pay/" + me, doc); toast("Sent to your coach"); render(); return true;
   } });
 }
 async function confirmPay(uidFor, id) {
-  const doc = CLUB.pay[uidFor]; if (!doc) return; const x = doc.items.find((y) => y.id === id); if (!x) return; x.status = "ok"; x.okBy = myUid(); x.okAt = todayIso(); await cset("club/" + CLUB.id + "/pay/" + uidFor, doc); toast("Confirmed"); render();
+  const doc = CLUB.pay[uidFor]; if (!doc) return; const x = doc.items.find((y) => y.id === id); if (!x) return; const all = x.group ? doc.items.filter((y) => y.group === x.group && y.status === "pending") : [x]; all.forEach((y) => { y.status = "ok"; y.okBy = myUid(); y.okAt = todayIso(); }); await cset("club/" + CLUB.id + "/pay/" + uidFor, doc); toast("Confirmed"); render();
 }
 function vAppAdmin() {
   const A = CLUB.app || {}; const pend = CLUB.pending || []; const ups = ((CLUB.upgrades && CLUB.upgrades.list) || []).filter((u) => u.status === "pending");
@@ -2063,10 +2090,11 @@ function clubSheet(edit) {
   const b = field("c-n", "Club name", inp("c-n", P.n || "", "text", 'autofocus placeholder="e.g. Ulaanbaatar BJJ"')) + '<div class="grid2">' + field("c-city", "City", inp("c-city", P.city || "", "text")) + field("c-coach", "Head coach", inp("c-coach", P.coach || "", "text")) + "</div>" +
     field("c-addr", "Address", inp("c-addr", P.addr || "", "text")) + '<div class="grid2">' + field("c-phone", "Phone", inp("c-phone", P.phone || "", "tel")) + field("c-ig", "Instagram", inp("c-ig", P.ig || "", "text", 'placeholder="@club"')) + "</div>" +
     '<div class="grid2">' + field("c-fm", "Monthly fee (₮)", inp("c-fm", fee.month || "", "number", 'inputmode="numeric"')) + field("c-fd", "Drop-in fee (₮)", inp("c-fd", fee.drop || "", "number", 'inputmode="numeric"')) + "</div>" + field("c-about", "About", ta("c-about", P.about || "", "Style, who trains here, what to bring…")) +
-    '<p class="lbl" style="margin-top:4px">How members pay you</p><div class="grid2">' + field("c-bank", "Bank", inp("c-bank", (P.pay || {}).bank || "", "text")) + field("c-acc", "Account", inp("c-acc", (P.pay || {}).account || "", "text")) + "</div><div class=\"grid2\">" + field("c-holder", "Name on account", inp("c-holder", (P.pay || {}).holder || "", "text")) + field("c-qpay", "QPay", inp("c-qpay", (P.pay || {}).qpay || "", "text")) + "</div>" + field("c-pnote", "Payment note", inp("c-pnote", (P.pay || {}).note || "", "text", 'placeholder="Write your name in the transfer"'));
-  openSheet(edit ? "Edit club" : "Register a club", b, { saveLabel: edit ? "Save" : "Create club", async onSave() {
+    '<p class="lbl" style="margin-top:4px">How members pay you</p><div class="grid2">' + field("c-bank", "Bank", inp("c-bank", (P.pay || {}).bank || "", "text")) + field("c-acc", "Account", inp("c-acc", (P.pay || {}).account || "", "text")) + "</div><div class=\"grid2\">" + field("c-holder", "Name on account", inp("c-holder", (P.pay || {}).holder || "", "text")) + field("c-qpay", "QPay", inp("c-qpay", (P.pay || {}).qpay || "", "text")) + "</div>" + field("c-pnote", "Payment note", inp("c-pnote", (P.pay || {}).note || "", "text", 'placeholder="Write your name in the transfer"')) +
+    '<p class="lbl" style="margin-top:4px">Subscription options</p><p class="small muted" style="margin:0">Name, months and price. 0 months = drop-in. Leave empty to offer 1, 3 and 6 months from the monthly fee.</p><div id="c-plans"></div>';
+  openSheet(edit ? "Edit club" : "Register a club", b, { state: { plans: (P.plans || []).map((p) => Object.assign({}, p)) }, saveLabel: edit ? "Save" : "Create club", async onSave() {
     const n = sv("c-n").trim(); if (!n) { $("c-n").focus(); return false; }
-    const rec = Object.assign(edit ? CLUB.profile : { id: uid(), admins: [myUid()], schedule: [], created: todayIso(), status: isSuper() ? "approved" : "pending", by: myUid(), code: genCode(6), coachCode: genCode(8), open: false }, { n, city: sv("c-city").trim(), coach: sv("c-coach").trim(), addr: sv("c-addr").trim(), phone: sv("c-phone").trim(), ig: sv("c-ig").trim(), about: sv("c-about").trim(), fee: { month: +sv("c-fm") || 0, drop: +sv("c-fd") || 0 }, pay: { bank: sv("c-bank").trim(), account: sv("c-acc").trim(), holder: sv("c-holder").trim(), qpay: sv("c-qpay").trim(), note: sv("c-pnote").trim() } });
+    const rec = Object.assign(edit ? CLUB.profile : { id: uid(), admins: [myUid()], schedule: [], created: todayIso(), status: isSuper() ? "approved" : "pending", by: myUid(), code: genCode(6), coachCode: genCode(8), open: false }, { n, city: sv("c-city").trim(), coach: sv("c-coach").trim(), addr: sv("c-addr").trim(), phone: sv("c-phone").trim(), ig: sv("c-ig").trim(), about: sv("c-about").trim(), fee: { month: +sv("c-fm") || 0, drop: +sv("c-fd") || 0 }, pay: { bank: sv("c-bank").trim(), account: sv("c-acc").trim(), holder: sv("c-holder").trim(), qpay: sv("c-qpay").trim(), note: sv("c-pnote").trim() }, plans: planRead().filter((p) => p.price > 0) });
     try {
       await cset("club/" + rec.id + "/profile", rec);
       const idx = (await cget("clubs/index")) || { list: [] }; const i = idx.list.findIndex((x) => x.id === rec.id); const row = { id: rec.id, n: rec.n, city: rec.city, status: rec.status || "approved", by: rec.by, open: !!rec.open }; if (i >= 0) idx.list[i] = row; else idx.list.push(row); await cset("clubs/index", idx);
@@ -2075,6 +2103,7 @@ function clubSheet(edit) {
     } catch (e) { toast("Could not save the club"); }
     return true;
   } });
+  planRows();
 }
 function classSheet(i) {
   const P = CLUB.profile; const sched = (P.schedule || []).slice().sort((a, b) => a.d - b.d || (a.t < b.t ? -1 : 1)); const x = i != null ? sched[i] : null;
@@ -2085,12 +2114,18 @@ function classSheet(i) {
     if (!x) (P.schedule = P.schedule || []).push(rec); await cset("club/" + P.id + "/profile", P); toast("Saved"); render(); return true;
   } });
 }
+/* plan editor rows inside clubSheet (UI.sheet.plans) */
+function planRows() {
+  const el = $("c-plans"); if (!el || !UI.sheet) return; const ps = UI.sheet.plans || (UI.sheet.plans = []);
+  el.innerHTML = (ps.length ? '<div class="planrow head"><span>Name</span><span>Months</span><span>Price (₮)</span><span></span></div>' : "") + ps.map((p, i) => '<div class="planrow">' + inp("c-plan-n-" + i, p.n || "", "text", 'placeholder="' + esc(planName(p)) + '" aria-label="Name"') + inp("c-plan-m-" + i, p.months == null ? 1 : p.months, "number", 'inputmode="numeric" min="0" max="24" aria-label="Months"') + inp("c-plan-p-" + i, p.price || "", "number", 'inputmode="numeric" aria-label="Price (₮)"') + '<button type="button" class="x" data-act="plan-rm" data-i="' + i + '" aria-label="Remove">✕</button></div>').join("") + '<button type="button" class="btn ghost" data-act="plan-add">+ Add option</button>';
+}
+function planRead() { const ps = (UI.sheet && UI.sheet.plans) || []; return ps.map((p, i) => { const months = Math.min(24, Math.max(0, Math.round(+sv("c-plan-m-" + i) || 0))); return { id: p.id || uid(), n: sv("c-plan-n-" + i).trim(), months, price: +sv("c-plan-p-" + i) || 0, kind: months ? "sub" : "drop" }; }); }
 function paySheet(id, forUid) {
   const me = myUid(); const uidFor = forUid || me; const doc = CLUB.pay[uidFor] || { items: [] }; const x = id ? doc.items.find((y) => y.id === id) : null; const P = CLUB.profile;
   const who = forUid && forUid !== me ? (CLUB.members.list.find((m) => m.uid === forUid) || {}).n : "";
   const b = (who ? '<p class="small muted">For ' + esc(who) + "</p>" : "") + '<div class="grid2">' + field("p-d", "Paid on", inp("p-d", x ? x.d : todayIso(), "date", 'max="' + todayIso() + '"')) + field("p-per", "For month", inp("p-per", x ? x.per : thisMonth(), "month")) + "</div>" +
     '<div class="grid2">' + field("p-amt", "Amount (₮)", inp("p-amt", x ? x.amt : (P.fee && P.fee.month) || "", "number", 'inputmode="numeric"')) + field("p-note", "Note", inp("p-note", x ? x.note : "", "text", 'placeholder="cash / transfer"')) + "</div>";
-  openSheet(x ? "Edit payment" : "Log a payment", b, { onDelete: x ? async () => { doc.items = doc.items.filter((y) => y.id !== id); CLUB.pay[uidFor] = doc; await cset("club/" + P.id + "/pay/" + uidFor, doc); render(); return true; } : null, async onSave() {
+  openSheet(x ? "Edit payment" : "Log a payment", b, { onDelete: x ? async () => { doc.items = doc.items.filter((y) => y.id !== id && !(x.group && y.group === x.group)); CLUB.pay[uidFor] = doc; await cset("club/" + P.id + "/pay/" + uidFor, doc); render(); return true; } : null, async onSave() {
     const rec = x || { id: uid() }; rec.d = sv("p-d") || todayIso(); rec.per = sv("p-per") || thisMonth(); rec.amt = +sv("p-amt") || 0; rec.note = sv("p-note").trim(); rec.by = me;
     if (!x) doc.items.push(rec); CLUB.pay[uidFor] = doc; await cset("club/" + P.id + "/pay/" + uidFor, doc); toast("Payment logged"); render(); return true;
   } });
@@ -2142,6 +2177,10 @@ document.addEventListener("click", (e) => {
     case "club-reload": CLUB.loadedFor = null; render(); break;
     case "club-new": clubSheet(false); break;
     case "club-edit": clubSheet(true); break;
+    case "pay-plan": UI.payPlan = ds.v; render(); break;
+    case "pay-copy": { const v = ds.v; if (navigator.clipboard) navigator.clipboard.writeText(v).then(() => toast("Copied"), () => toast(v)); else toast(v); break; }
+    case "plan-add": { if (!UI.sheet) break; const ps = planRead(); const fee = (CLUB.profile && CLUB.profile.fee) || {}; if (!ps.length) ps.push(...clubPlans({ fee: { month: +sv("c-fm") || fee.month, drop: +sv("c-fd") || fee.drop } })); else ps.push({ id: uid(), n: "", months: 1, price: +sv("c-fm") || fee.month || 0, kind: "sub" }); UI.sheet.plans = ps; planRows(); break; }
+    case "plan-rm": { if (!UI.sheet) break; const ps = planRead(); ps.splice(+ds.i, 1); UI.sheet.plans = ps; planRows(); break; }
     case "club-join": if (ds.open) clubJoin(ds.id, "", false); else joinSheet(ds.id, false); break;
     case "club-coach": joinSheet(ds.id, true); break;
     case "club-paynow": payNowSheet(); break;
