@@ -1472,7 +1472,7 @@ function profileEditSheet() {
 }
 /* Avatar: a 96×96 centre-cropped JPEG data URL (≈3–5 KB) in S.settings.avatar, mirrored to the member record (av) and feed posts. */
 function avatarFromFile(f) {
-  return new Promise((res, rej) => { const url = URL.createObjectURL(f); const im = new Image(); im.onload = () => { URL.revokeObjectURL(url); try { const N = 96, cv = document.createElement("canvas"); cv.width = N; cv.height = N; const g = cv.getContext("2d"); const w = im.naturalWidth || im.width, h = im.naturalHeight || im.height; const c = Math.min(w, h); g.drawImage(im, (w - c) / 2, (h - c) / 2, c, c, 0, 0, N, N); res(cv.toDataURL("image/jpeg", 0.75)); } catch (e) { rej(e); } }; im.onerror = () => { URL.revokeObjectURL(url); rej(new Error("bad image")); }; im.src = url; });
+  return new Promise((res, rej) => { const url = URL.createObjectURL(f); const im = new Image(); im.onload = () => { URL.revokeObjectURL(url); try { const N = 50, cv = document.createElement("canvas"); cv.width = N; cv.height = N; const g = cv.getContext("2d"); const w = im.naturalWidth || im.width, h = im.naturalHeight || im.height; const c = Math.min(w, h); g.drawImage(im, (w - c) / 2, (h - c) / 2, c, c, 0, 0, N, N); res(cv.toDataURL("image/jpeg", 0.75)); } catch (e) { rej(e); } }; im.onerror = () => { URL.revokeObjectURL(url); rej(new Error("bad image")); }; im.src = url; });
 }
 function avatarPreview() { const el = $("pf-av"); if (!el || !UI.sheet) return; el.innerHTML = avatarInner(sv("f-name") || myName(), UI.sheet.av); const rm = document.querySelector('#sheet-body [data-act="avatar-rm"]'); if (rm) rm.hidden = !UI.sheet.av; }
 function avatarInner(name, av) { return av ? '<img src="' + esc(av) + '" alt="">' : esc(initials(name)); }
@@ -2151,7 +2151,7 @@ document.addEventListener("click", async (e) => {
   switch (act) {
     case "tab": { const order = TABS.map((t) => t[0]); const anim = order.indexOf(ds.v) > order.indexOf(UI.tab) ? "enter-l" : "enter-r"; UI.tab = ds.v; try { localStorage.setItem("bjj-tab", ds.v); } catch (x) {} go(anim); break; }
     case "settings": settingsSheet(); break;
-    case "avatar-rm": if (UI.sheet) { UI.sheet.av = ""; avatarPreview(); } break;
+    case "avatar-rm": if (UI.sheet) { UI.sheet.photoVersion = (UI.sheet.photoVersion || 0) + 1; UI.sheet.photoLoading = false; UI.sheet.av = ""; const crop = $("pf-crop"); if (crop) crop.replaceChildren(); avatarPreview(); } break;
     case "menu": menuSheet(); break;
     case "profile": if (UI.sheet) closeSheet(); if (UI.tab !== "profile") { UI.prevTab = UI.tab; UI.tab = "profile"; go("enter-l"); } break;
     case "profile-back": UI.tab = UI.prevTab && VIEWS[UI.prevTab] && UI.prevTab !== "profile" ? UI.prevTab : "home"; UI.prevTab = null; go("enter-r"); break;
@@ -2383,16 +2383,17 @@ clubLoad = async function () {
 };
 profileEditSheet = function () {
   const body = '<div class="avpick"><span class="av xl" id="pf-av">' + avatarInner(myName(), S.settings.avatar) + '</span><div class="avpick-b"><label for="pf-photo" class="btn ghost">Choose a photo</label><input id="pf-photo" type="file" accept="image/*"><button class="btn ghost" data-act="avatar-rm">Remove photo</button></div></div>' +
-    field('f-name', 'Real name (for your coach)', inp('f-name', S.settings.name || '', 'text', 'required autocomplete="name" placeholder="Бат-Эрдэнэ"')) +
+    '<div id="pf-crop" class="profile-crop"></div>' + field('f-name', 'Real name (for your coach)', inp('f-name', S.settings.name || '', 'text', 'required autocomplete="name" placeholder="Бат-Эрдэнэ"')) +
     field('f-username', 'Social username', inp('f-username', myHandle(), 'text', 'required autocapitalize="none" pattern="[a-z0-9][a-z0-9._-]{2,29}"')) + ageFields('pf') + field('f-bio', 'Bio', ta('f-bio', S.settings.bio || '', ''));
   openSheet('Edit profile', body, { state: { av: S.settings.avatar || '' }, saveLabel: 'Done', async onSave() {
+    if (UI.sheet.photoLoading) { toast('Loading photo…'); return false; }
     const name = sv('f-name').trim(), username = A.username(sv('f-username')), dob = sv('pf-dob');
     if (!name || !A.validUsername(username) || A.age(dob, todayIso()) === null) { toast('Enter your real name, username and date of birth'); return false; }
     if (((CLUB.members || {}).list || []).some((m) => m.uid !== myUid() && m.username === username)) { toast('This username is already used in your club'); return false; }
     Object.assign(S.settings, { name, username, birthDate: dob, bio: sv('f-bio').trim().slice(0, 300), avatar: UI.sheet.av || '' }); save('settings');
     if (CLUB.id) { const member = (CLUB.members.list || []).find((m)=>m.uid===myUid()); if (member) member.n = name; await clubUpdateMe(); } render(); return true;
   }});
-  $('pf-photo').addEventListener('change', async (e) => { const f = e.target.files[0]; if (!f) return; try { const av = await avatarFromFile(f); if (UI.sheet) { UI.sheet.av = av; avatarPreview(); } } catch (_) { toast('Could not read the photo'); } });
+  $('pf-photo').addEventListener('change', async (e) => { const f = e.target.files[0]; if (!f) return; const sheet = UI.sheet, version = sheet.photoVersion = (sheet.photoVersion || 0) + 1; sheet.photoLoading = true; try { await window.ARROW_PHOTO.crop($('pf-crop'), f, (av) => { if (UI.sheet === sheet && sheet.photoVersion === version) { sheet.photoLoading = false; sheet.av = av; avatarPreview(); } }, () => UI.sheet === sheet && sheet.photoVersion === version); } catch (_) { toast('Could not read the photo'); } finally { if (UI.sheet === sheet && sheet.photoVersion === version) sheet.photoLoading = false; } e.target.value = ''; });
 };
 const memberSheetBase = memberSheet;
 memberSheet = function (id) {

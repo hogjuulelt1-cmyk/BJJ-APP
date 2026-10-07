@@ -11,7 +11,7 @@ with sync_playwright() as p:
  c.route('https://fonts.gstatic.com/**',lambda r:r.abort())
  c.route('**/config.js',lambda r:r.fulfill(body='window.APP_CONFIG={};',content_type='application/javascript'))
  page=c.new_page(); errors=[]; page.on('pageerror',lambda e:errors.append(str(e)))
- page.goto('http://127.0.0.1:8080/')
+ page.goto(os.environ.get('ARROW_TEST_URL','http://127.0.0.1:8080/'))
  def reset(data=base,theme='light',lang='en'):
   page.evaluate('(v)=>{localStorage.clear();localStorage.setItem("bjj-v1",JSON.stringify(v.data));localStorage.setItem("bjj-club-local",JSON.stringify(v.club));localStorage.setItem("bjj-lang",v.lang);localStorage.setItem("bjj-theme",v.theme)}',{'data':data,'club':club,'lang':lang,'theme':theme})
   page.reload(); page.wait_for_timeout(1000)
@@ -27,9 +27,9 @@ with sync_playwright() as p:
  click('homeseg','[data-v="friends"]'); assert page.locator('[data-act="arrow-friend"]').count()==1
  click('arrow-friend'); assert page.evaluate('JSON.parse(localStorage.getItem("bjj-club-local"))["club/test/friends"].list[0].status')=='accepted'
  click('arrow-notices');assert 'Club announcement' in page.locator('#sheet-body').inner_text();click('sheet-save'); assert page.locator('.notice-count').count()==0
- click('profile');click('profile-edit');page.locator('#pf-photo').set_input_files({'name':'avatar.png','mimeType':'image/png','buffer':page.screenshot()});page.wait_for_timeout(300);page.locator('#f-name').fill('Бат Монгол');page.locator('#f-username').fill('batnew');click('sheet-save');assert saved()['settings']['name']=='Бат Монгол';assert saved()['settings']['avatar'].startswith('data:image/jpeg');assert not page.locator('#sheet').evaluate('(e)=>e.classList.contains("open")')
+ click('profile');click('profile-edit');page.locator('#pf-photo').set_input_files({'name':'avatar.png','mimeType':'image/png','buffer':page.screenshot()});page.wait_for_timeout(300);page.locator('.avatar-crop').wait_for();page.locator('.crop-zoom input').evaluate('(e)=>{e.value=2;e.dispatchEvent(new Event("input"))}');before=page.locator('#pf-av img').get_attribute('src');page.locator('.avatar-crop').press('ArrowDown');assert page.locator('#pf-av img').get_attribute('src')!=before;page.locator('#f-name').fill('Бат Монгол');page.locator('#f-username').fill('batnew');click('sheet-save');assert saved()['settings']['name']=='Бат Монгол';assert saved()['settings']['avatar'].startswith('data:image/jpeg');assert page.evaluate('async()=>{const im=new Image();im.src=JSON.parse(localStorage.getItem("bjj-v1")).settings.avatar;await im.decode();return im.naturalWidth===50&&im.naturalHeight===50}');assert not page.locator('#sheet').evaluate('(e)=>e.classList.contains("open")')
  assert page.evaluate('!JSON.stringify(JSON.parse(localStorage.getItem("bjj-club-local"))).includes("1990-02-01")')
- result=page.evaluate('async()=>{const s=JSON.parse(localStorage.getItem("bjj-v1"));const m=JSON.parse(localStorage.getItem("bjj-club-local"))["club/test/members"].list.find(m=>m.uid==="local"); return await ARROW.openAge(m.ageSealed.local,s.settings.coachAgeKeys.test.privateKey)}');assert result==36,result
+ result=page.evaluate('async()=>{const s=JSON.parse(localStorage.getItem("bjj-v1"));const m=JSON.parse(localStorage.getItem("bjj-club-local"))["club/test/members"].list.find(m=>m.uid==="local"); return await ARROW.openAge(m.ageSealed.local,s.settings.coachAgeKeys.test.privateKey)}');assert result==date.today().year-1990-(date.today().strftime("%m-%d")<"02-01"),result
  click('tab','[data-v="home"]');click('live-start');click('sheet-save');
  for key in ['subs','tech','taps']:
   click('live-inc','[data-k="'+key+'"]');click('live-inc','[data-k="'+key+'"]'); assert not page.locator('#sheet').evaluate('(e)=>e.classList.contains("open")')

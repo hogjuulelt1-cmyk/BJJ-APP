@@ -598,6 +598,7 @@ button.av{border:0;padding:0;cursor:pointer;font:inherit;font-family:var(--displ
 @keyframes slideR{from{opacity:0;transform:translateX(-24px)}to{opacity:1;transform:none}}
 
 /* Arrow mobile refinements */
+.profile-crop:empty{display:none}.profile-crop{margin:16px 0;padding:14px;background:var(--sunk);border-radius:14px}.avatar-crop{display:block;width:180px;height:180px;max-width:100%;margin:10px auto;border-radius:8px;touch-action:none;cursor:grab;outline-offset:3px}.avatar-crop:active{cursor:grabbing}.crop-zoom{display:flex;align-items:center;gap:12px}.crop-zoom input{flex:1;min-width:0;min-height:44px;accent-color:var(--accent)}
 [hidden]{display:none!important}
 .who{position:relative}.who .notice-bell{position:absolute;right:0;top:0;width:36px;height:36px;padding:6px;justify-content:center}.notice-bell{position:relative;min-width:40px;font-size:1.5rem}.notice-count{position:absolute;right:0;top:0;background:var(--accent,#fc4c02);color:white;border-radius:99px;font-size:.65rem;padding:2px 5px}
 .seg-wrap{position:relative}.seg-wrap .seg{padding-right:32px}.seg-more{position:absolute;right:0;top:0;height:100%;width:30px;display:grid;place-items:center;font-size:1.6rem;background:linear-gradient(90deg,transparent,var(--surface) 50%);pointer-events:none}.seg-hint{font-size:.72rem;color:var(--muted);text-align:right;margin:3px 3px 10px}
@@ -631,10 +632,11 @@ button.av{border:0;padding:0;cursor:pointer;font:inherit;font-family:var(--displ
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 <script src="config.js"></script>
 <script src="qr.js?v=1"></script>
-<script src="lang-mn.js?v=10"></script>
+<script src="lang-mn.js?v=11"></script>
 <script src="meta.js?v=3"></script>
 <script src="seed.js?v=8"></script>
 <script src="arrow-core.js?v=1"></script>
-<script src="app.js?v=28"></script>
+<script src="profile-photo.js?v=1"></script>
+<script src="app.js?v=29"></script>
 </body>
 </html>

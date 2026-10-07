@@ -81,7 +81,7 @@ after every draw so `navigator.share` runs inside the tap (iOS), and the QR post
 Live training (`S.settings.live`: t0, type, rolls, subs/taps/tech names): "Start training" button on Home
 and You → Log (`liveCard`), counters with pickers (`livePickSheet`, `data-pk="live-*"`), Finish →
 `sessSheet(null, prefill)` → save clears it and opens the share card in story format
-(`shareSheet(id, "story")`). Profile photo: `S.settings.avatar` (96px JPEG data URL), mirrored to the
+(`shareSheet(id, "story")`). Profile photo: `S.settings.avatar` (50px JPEG data URL), mirrored to the
 member record `av` and feed posts `av`; `avatarHtml(name, av, cls, attrs)` renders it everywhere.
 Club plans: `P.plans` `[{id, n, months, price, kind}]` (defaults from `fee` via `clubPlans`), plan cards on
 the Pay tab (`UI.payPlan`), a payment creates one `pay` item per covered month sharing a `group`
@@ -135,3 +135,5 @@ Schedules carry `group: kids|adult|all`; calendar dots show kids, adults and ope
 
 Sheet save/delete handlers await asynchronous writes and keep failed validation open.
 The smoke script in `tests/arrow-smoke.py` uses local fixtures with config.js intercepted.
+
+Profile photos use `profile-photo.js`: drag/keyboard positioning and zoom in the profile editor, exporting only a 50×50 JPEG. Source files and share-frame photos stay in the browser.
