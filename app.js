@@ -183,13 +183,14 @@ async function checkinWith(code) {
 }
 /* member side: the middle tab button opens the camera and scans the club QR (BarcodeDetector, else jsQR loaded on demand);
    the club code can be typed instead. Other quick actions sit under the scanner. */
-let SCAN = null;
+let SCAN = null; const SCAN_LIB = { p: null };
 function canScan() { return !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia && (window.isSecureContext || location.hostname === "localhost")); }
 function checkinSheet(auto) {
   const P = CLUB.profile; const today = todayIso(); const inClub = !!(P && !clubNeeds());
   const b = (canScan() ? '<div class="scanbox" id="scan-box"><video id="scan-v" playsinline muted></video><p class="muted small scan-msg" id="scan-msg">Point the camera at the club QR at the door.</p><button class="btn wide" data-act="scan-start">Open the camera</button></div>' : '<p class="muted small">The camera is not available here: open the phone camera and point it at the QR instead.</p>') +
     (inClub ? (attDays(CLUB.attMonth, myUid()).includes(today) ? '<p class="tip good">You are already checked in for today.</p>' : "") + field("ci-code", "Or type the club code", inp("ci-code", "", "text", 'autocapitalize="characters" autocomplete="off" maxlength="8" placeholder="6 characters"')) : '<p class="small">Not in a club yet? The QR at your club\'s door signs you up too.</p><button class="btn ghost wide" data-act="tab" data-v="club">Find my club</button>') +
     '<p class="lbl" style="margin-top:6px">More</p><div class="quick"><button data-act="rec-go" data-v="sess">📝 Log training</button><button data-act="rec-go" data-v="roll">🥋 Start a roll</button><button data-act="rec-go" data-v="drill">🔁 Drills</button>' + (S.log.items.length ? '<button data-act="rec-go" data-v="share">📸 Share</button>' : "") + "</div>";
+  if (!("BarcodeDetector" in window) && typeof jsQR !== "function" && !SCAN_LIB.p && canScan()) SCAN_LIB.p = loadScript("vendor/jsQR.js?v=1").catch(() => { SCAN_LIB.p = null; });
   openSheet("Check in", b, inClub ? { saveLabel: "Check in", onSave() { const t = sv("ci-code").trim().toUpperCase(); if (!t) { $("ci-code").focus(); return false; } checkinWith(t); return true; } } : {});
   if (auto && canScan()) scanStart();
 }
@@ -197,8 +198,9 @@ function loadScript(src) { return new Promise((res, rej) => { const e = document
 async function scanStart() {
   const v = $("scan-v"); if (!v || SCAN) return; const msg = $("scan-msg");
   try {
-    if (!("BarcodeDetector" in window) && typeof jsQR !== "function") { if (msg) msg.textContent = tr("Loading the scanner…"); await loadScript("vendor/jsQR.js?v=1"); }
-    const st = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment", width: { ideal: 1280 }, height: { ideal: 1280 } } }); v.srcObject = st; await v.play(); $("scan-box").classList.add("on"); if (msg) msg.textContent = tr("Point the camera at the club QR at the door.");
+    const need = !("BarcodeDetector" in window) && typeof jsQR !== "function"; const lib = need ? (SCAN_LIB.p || (SCAN_LIB.p = loadScript("vendor/jsQR.js?v=1"))) : null;
+    const st = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment", width: { ideal: 1280 }, height: { ideal: 1280 } } }); v.srcObject = st; await v.play();
+    if (lib) { if (msg) msg.textContent = tr("Loading the scanner…"); await lib; } $("scan-box").classList.add("on"); if (msg) msg.textContent = tr("Point the camera at the club QR at the door.");
     SCAN = { st, det: "BarcodeDetector" in window ? new BarcodeDetector({ formats: ["qr_code"] }) : null, on: true }; scanLoop();
   } catch (e) { if (msg) msg.textContent = tr("Camera not available") + ". " + tr("Allow the camera in the browser settings, or type the code."); else toast("Camera not available"); }
 }
@@ -223,8 +225,9 @@ function qrSheet() {
     '<div class="qrbox" id="qr-box">' + (svg || '<p class="empty">The link is too long for a QR code.</p>') + "</div>" +
     '<div class="codes big" style="text-align:center"><span>Club code<b>' + esc(CLUB.profile.code || "—") + "</b></span></div>" +
     '<button class="btn wide" data-act="qr-save">Save the poster</button><div class="grid2"><button class="btn ghost" data-act="qr-copy" data-url="' + esc(url) + '">Copy link</button><button class="btn ghost" data-act="qr-share" data-url="' + esc(url) + '">Share</button></div>';
-  openSheet("Club QR", b, {});
+  openSheet("Club QR", b, {}); QR_IMG.blob = null; qrImage().then((bl) => { QR_IMG.blob = bl; });
 }
+const QR_IMG = { blob: null };
 async function qrImage() {
   const url = checkinLink(); const q = window.QR && QR.matrix(url); if (!q) return null; const W = 1080, H = 1350, cv = document.createElement("canvas"); cv.width = W; cv.height = H; const g = cv.getContext("2d");
   g.fillStyle = "#fff"; g.fillRect(0, 0, W, H); g.fillStyle = "#fc5200"; g.fillRect(0, 0, W, 24); g.fillStyle = "#111"; g.textAlign = "center"; g.font = "700 72px -apple-system, Helvetica, Arial, sans-serif";
@@ -237,7 +240,7 @@ async function qrImage() {
   return new Promise((res) => cv.toBlob(res, "image/png"));
 }
 async function qrSend(save) {
-  const blob = await qrImage(); if (!blob) return; const file = new File([blob], "club-qr-" + CLUB.id + ".png", { type: "image/png" });
+  const blob = QR_IMG.blob || (await qrImage()); if (!blob) return; const file = new File([blob], "club-qr-" + CLUB.id + ".png", { type: "image/png" });
   if (!save && navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) { try { await navigator.share({ files: [file], title: CLUB.profile.n }); return; } catch (e) { if (e.name === "AbortError") return; } }
   const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = file.name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 2000); toast("Image saved");
 }
@@ -1060,7 +1063,8 @@ function shareSheet(sessId) {
   const inp0 = $("sh-photo"); inp0.addEventListener("change", () => { const f = inp0.files && inp0.files[0]; if (!f) return; const url = URL.createObjectURL(f); const im = new Image(); im.onload = () => { SHARE.img = im; URL.revokeObjectURL(url); drawShare(); }; im.src = url; });
   drawShare();
 }
-function drawShare() {
+function drawShare() { drawShareNow(); const cv = $("sh-cv"); if (cv) { SHARE.blob = null; const tok = (SHARE.tok = (SHARE.tok || 0) + 1); cv.toBlob((b) => { if (tok === SHARE.tok) SHARE.blob = b; }, "image/png"); } }
+function drawShareNow() {
   const cv = $("sh-cv"); if (!cv) return; const s = SHARE.sess; const g = cv.getContext("2d"); const W = cv.width, H = cv.height; const tpl = SHARE.tpl; const dark = tpl !== "light";
   g.clearRect(0, 0, W, H);
   if (SHARE.img && tpl === "photo") { const im = SHARE.img; const r = Math.max(W / im.width, H / im.height); const w = im.width * r, h = im.height * r; g.drawImage(im, (W - w) / 2, (H - h) / 2, w, h); const gr = g.createLinearGradient(0, H * 0.35, 0, H); gr.addColorStop(0, "rgba(10,13,20,0)"); gr.addColorStop(1, "rgba(10,13,20,.92)"); g.fillStyle = gr; g.fillRect(0, 0, W, H); const gt = g.createLinearGradient(0, 0, 0, H * 0.3); gt.addColorStop(0, "rgba(10,13,20,.6)"); gt.addColorStop(1, "rgba(10,13,20,0)"); g.fillStyle = gt; g.fillRect(0, 0, W, H); }
@@ -1095,7 +1099,7 @@ function drawShare() {
 }
 async function shareSend(save) {
   const cv = $("sh-cv"); if (!cv) return; const s = SHARE.sess; const name = "jiu-jitsu-" + s.d + ".png";
-  const blob = await new Promise((res) => cv.toBlob(res, "image/png")); if (!blob) return;
+  const blob = SHARE.blob || (await new Promise((res) => cv.toBlob(res, "image/png"))); if (!blob) return;
   const file = new File([blob], name, { type: "image/png" });
   if (!save && navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) { try { await navigator.share({ files: [file], title: "Jiu-jitsu", text: fmtLong(s.d) + " · " + (s.min || 0) + " min" }); shareMark(); return; } catch (e) { if (e.name === "AbortError") return; } }
   const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 2000); toast("Image saved"); shareMark();
