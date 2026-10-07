@@ -1,4 +1,4 @@
-# Chinbilig Jiu-jitsu
+# Arrow Jiu-jitsu
 
 Personal BJJ app: walk through a roll node by node on a technique graph, log training, body work, rank, weight and competitions.
 
@@ -58,3 +58,16 @@ checked in.
 ## Language
 
 The app and the console open in Mongolian. Settings → Language (or the button in the console sidebar) switches to English. Strings live in `lang-mn.js`: exact text in `dict`, text with numbers or names in `rules`. Technique, position and drill names come from the `en` field of the data.
+
+## Arrow update
+
+Profiles have a photo, real name, social username and mandatory private birth date.
+Under-13 members see private training without Feed, Leaderboard or Friends. Coaches can set
+belts and see encrypted member ages after the member completes their profile.
+Live counters support unnamed techniques, and sharing has a Done button.
+Club schedules separate children, adults and open mats, with calendar markers.
+Notices have unread badges and optional browser notifications while the app is open.
+Background push is not configured.
+
+Smoke check (requires Python Playwright and Chromium): serve this directory on port 8080,
+then run `python tests/arrow-smoke.py`. The test uses isolated local fixtures.

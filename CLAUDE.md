@@ -115,3 +115,23 @@ saved and from the Log card, and uses the Web Share API with a PNG download fall
 
 - Serve with `window.APP_CONFIG={}` and run Playwright at iPhone 13 size, light and dark:
   no page errors, no horizontal overflow, inputs 16px.
+
+## Arrow identity and privacy
+
+`arrow-core.js` supplies age validation and RSA-OAEP helpers to both clients. `settings.birthDate`
+is private; never put plaintext birth dates or numeric ages in shared club docs. Coaches register
+public keys in `profile.ageKeys`; private keys stay in their personal `settings.coachAgeKeys`.
+Members seal birth dates separately for each coach in `member.ageSealed`; coach age is decrypted
+only in memory. A member must open the app after a new coach registers a key to share their age.
+The underlying shared-club RLS remains unchanged; age restrictions hide social UI and skip feed
+loads for under-13 members, not a replacement for backend authorization.
+
+`settings.name` is the real Unicode name; `settings.username` is the social handle.
+Social eligibility requires a valid birth date and age >=13. Friends live in `club/<id>/friends`.
+Notices use a header badge and unread IDs in personal `settings.noticeSeen`; visible pages poll
+every 30 seconds. Browser notifications require permission and an open app. No background push.
+Live + counters permit unspecified names; the adjacent picker names an unspecified count first.
+Schedules carry `group: kids|adult|all`; calendar dots show kids, adults and open mats.
+
+Sheet save/delete handlers await asynchronous writes and keep failed validation open.
+The smoke script in `tests/arrow-smoke.py` uses local fixtures with config.js intercepted.

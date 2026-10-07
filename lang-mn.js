@@ -216,3 +216,21 @@ rules: [
 [/^(\d+) days? ago$/, "$1 хоногийн өмнө"],
 ]
 } };
+
+Object.assign(window.BJJ_LANG.mn.dict, {
+  "Arrow":"Arrow", "Real name (for your coach)":"Жинхэнэ нэр (дасгалжуулагчид)",
+  "Social username":"Сошиал хэрэглэгчийн нэр", "Date of birth":"Төрсөн огноо",
+  "Your age is private. Only you and your coaches can see it.":"Нас тань нийтэд харагдахгүй. Зөвхөн та болон дасгалжуулагчид харна.",
+  "Complete your profile":"Профайлаа гүйцээнэ үү", "Enter your date of birth to continue.":"Үргэлжлүүлэхийн тулд төрсөн огноогоо оруулна уу.",
+  "Continue":"Үргэлжлүүлэх", "Enter a valid username and date of birth":"Хэрэглэгчийн нэр, төрсөн огноогоо зөв оруулна уу",
+  "Enter your real name, username and date of birth":"Жинхэнэ нэр, хэрэглэгчийн нэр, төрсөн огноогоо оруулна уу",
+  "Enter a valid date of birth":"Төрсөн огноогоо зөв оруулна уу", "This username is already used in your club":"Энэ хэрэглэгчийн нэр клубт бүртгэлтэй байна",
+  "Friends":"Найзууд", "Add friend":"Найз нэмэх", "Accept friend":"Найзын хүсэлт зөвшөөрөх", "Remove friend":"Найзаас хасах", "Cancel request":"Хүсэлт цуцлах", "Friend request":"Найзын хүсэлт", "Club member":"Клубын гишүүн",
+  "Join a club to add friends.":"Найз нэмэхийн тулд клубт нэгдэнэ үү.", "No members available yet.":"Одоогоор гишүүн алга.",
+  "Oss!":"Oss!", "Oss given":"Oss өгсөн", "Oss":"Oss", "Give kudos":"Oss!", "Kudos given":"Oss өгсөн", "Kudos":"Oss",
+  "Choose technique":"Мэх сонгох", "Unspecified":"Мэх нэрлээгүй", "My training":"Миний бэлтгэл", "Your training stays private.":"Таны бэлтгэл зөвхөн танд харагдана.",
+  "Club notifications":"Клубын мэдэгдэл", "No notices yet.":"Мэдэгдэл алга.", "Enable phone notifications":"Утасны мэдэгдэл асаах", "Notifications enabled":"Мэдэгдэл асаалаа", "Allow notifications in your browser":"Browser-ийн мэдэгдлийн зөвшөөрлийг нээнэ үү",
+  "Show club codes":"Клубын код харах", "Swipe for more sections":"Бусад хэсгийг хажуу тийш гүйлгэж үзээрэй",
+  "Kids classes":"Хүүхдийн анги", "Adult classes":"Насанд хүрэгчдийн анги", "Open mats / all ages":"Open mat / бүх нас", "Class group":"Ангийн насны бүлэг", "All ages":"Бүх нас", "No classes yet.":"Хуваарь алга.", "No class scheduled.":"Энэ өдөр хичээлгүй.",
+  "Date of birth (private)":"Төрсөн огноо (хувийн)", "Age is shared privately after the member completes their profile.":"Гишүүн профайлаа бөглөсний дараа нас нь дасгалжуулагчид харагдана.", "+ Add a class or open mat":"+ Хичээл эсвэл open mat нэмэх", "Choose a profile photo":"Профайлын зураг сонгох", "Age not shared yet":"Нас хараахан оруулаагүй", "Adjust belt":"Бүс тохируулах", "Could not update your club profile":"Клубын профайл шинэчилж чадсангүй", "Could not save your friend request":"Найзын хүсэлт хадгалж чадсангүй"
+});

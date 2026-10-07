@@ -30,7 +30,7 @@ const SB = {
   async list(prefix) { const r = await this.req("/rest/v1/docs?select=path,data,updated_at&path=like." + encodeURIComponent(prefix + "*")); return r.json(); },
   set(path, data) { return this.req("/rest/v1/docs", { method: "POST", headers: { "Content-Type": "application/json", Prefer: "resolution=merge-duplicates,return=minimal" }, body: JSON.stringify({ path, data, updated_at: new Date().toISOString() }) }); },
   // creates a login for someone else; the returned session is ignored so the admin stays signed in
-  async createUser(email, password, name) { const r = await fetch(this.url + "/auth/v1/signup", { method: "POST", headers: { apikey: this.key, "Content-Type": "application/json" }, body: JSON.stringify({ email, password, data: { name } }) }); const j = await r.json().catch(() => ({})); if (!r.ok) throw new Error(j.error_description || j.msg || j.message || "signup"); const id = (j.user && j.user.id) || j.id; if (!id) throw new Error("no user id"); return { id, confirmed: !!j.access_token }; },
+  async createUser(email, password, name, birthDate, username) { const r = await fetch(this.url + "/auth/v1/signup", { method: "POST", headers: { apikey: this.key, "Content-Type": "application/json" }, body: JSON.stringify({ email, password, data: { name, birthDate, username } }) }); const j = await r.json().catch(() => ({})); if (!r.ok) throw new Error(j.error_description || j.msg || j.message || "signup"); const id = (j.user && j.user.id) || j.id; if (!id) throw new Error("no user id"); return { id, confirmed: !!j.access_token }; },
 };
 
 const D = { clubs: [], members: {}, pay: {}, att: {}, results: {}, events: {}, index: null, app: null, pro: null, upgrades: null };
@@ -60,8 +60,25 @@ async function loadAll() {
   UI.role = isSuper() ? "super" : myClubs().length ? "coach" : "";
   if (UI.role === "coach") { UI.club = UI.club || myClubs()[0].id; if (!["overview", "members", "payments", "results"].includes(UI.page)) UI.page = "overview"; }
   if (UI.role === "super") { D.index = (await SB.get("clubs/index")) || { list: [] }; D.pro = (await SB.get("app/pro")) || { u: {} }; D.upgrades = (await SB.get("app/upgrades")) || { list: [] }; }
+  await loadPrivateAges();
   return !!UI.role;
 }
+/* Exact ages remain encrypted in shared club records. Private keys live in the coach's owner-only settings. */
+async function loadPrivateAges() {
+  D.privateAges = {};
+  const path = 'bjj/u/' + SB.uid() + '/settings';
+  const settings = await SB.get(path) || {};
+  settings.coachAgeKeys = settings.coachAgeKeys || {};
+  for (const c of myClubs()) {
+    let key = settings.coachAgeKeys[c.id];
+    if (!key) { key = await ARROW.newAgeKey(); settings.coachAgeKeys[c.id] = key; await SB.set(path, settings); }
+    c.ageKeys = c.ageKeys || {};
+    if (!c.ageKeys[SB.uid()]) { c.ageKeys[SB.uid()] = key.publicKey; await SB.set('club/' + c.id + '/profile', c); }
+    D.privateAges[c.id] = {};
+    for (const m of ((D.members[c.id] || {}).list || [])) { const n = await ARROW.openAge((m.ageSealed || {})[SB.uid()], key.privateKey); if (n !== null) D.privateAges[c.id][m.uid || m.id] = n; }
+  }
+}
+
 function membership(clubId, key) { const p = (D.pay[clubId] || {})[key]; const ok = p ? p.items.filter((x) => x.status !== "pending").map((x) => x.per).sort() : []; const last = ok[ok.length - 1]; if (!last) return { state: "none", text: "never paid" }; const y = +last.slice(0, 4), m = +last.slice(5); const end = new Date(y, m, 0); const days = Math.round((end - new Date(todayIso() + "T12:00:00")) / 86400000); return days >= 0 ? { state: "active", text: "paid until " + last, days } : { state: "expired", text: "expired after " + last, days }; }
 function pendingOf(clubId, key) { const p = (D.pay[clubId] || {})[key]; return p ? p.items.filter((x) => x.status === "pending") : []; }
 function pendingPays(clubId) { const out = []; for (const k in D.pay[clubId] || {}) for (const x of D.pay[clubId][k].items) if (x.status === "pending") out.push(Object.assign({ who: k }, x)); return out; }
@@ -118,7 +135,7 @@ function vMembers() {
     if (q && !((m.n || "") + " " + (m.email || "")).toLowerCase().includes(q)) continue; const key = m.uid || m.id; const ms = membership(c.id, key); const pend = pendingOf(c.id, key); const pr = progress(m);
     if (f === "active" && ms.state !== "active") continue; if (f === "due" && ms.state === "active") continue; if (f === "pending" && !pend.length) continue; if (f === "kids" && m.track !== "kids") continue; if (f === "adult" && m.track === "kids") continue; if (f === "comp" && !m.comp) continue; if (f === "nologin" && m.uid) continue; if (f === "ready" && !(pr.need && pr.have >= pr.need)) continue;
     const medals = medalsOf(c.id, m).filter((r) => r.status === "ok"); const bd = beltDef(m.track || "adult", m.belt || "white");
-    rows.push("<tr><td><b>" + esc(m.n || m.email || "Member") + "</b>" + (m.comp ? ' <span class="pill ok">comp team</span>' : "") + ((c.admins || []).includes(m.uid) ? ' <span class="pill">coach</span>' : "") + "<br><span class='muted small'>" + esc((m.email || "").replace("@" + MEMBER_DOMAIN, "")) + (m.phone ? " · " + esc(m.phone) : "") + "</span></td>" + (UI.role === "super" && !UI.club ? "<td>" + esc(c.n) + "</td>" : "") +
+    rows.push("<tr><td><b>" + esc(m.n || m.email || "Member") + "</b>" + (m.comp ? ' <span class="pill ok">comp team</span>' : "") + ((c.admins || []).includes(m.uid) ? ' <span class="pill">coach</span>' : "") + "<br><span class='muted small'>" + esc(m.username || (m.email || "").replace("@" + MEMBER_DOMAIN, "")) + ((D.privateAges[c.id] || {})[m.uid || m.id] == null ? "" : " · " + D.privateAges[c.id][m.uid || m.id] + " нас") + (m.phone ? " · " + esc(m.phone) : "") + "</span></td>" + (UI.role === "super" && !UI.club ? "<td>" + esc(c.n) + "</td>" : "") +
       '<td><span class="sw" style="background:' + esc(bd.c || "#999") + '"></span>' + esc(bd.n) + (m.stripes ? " · " + m.stripes + " str" : "") + "<br><span class='muted small'>" + (m.track === "kids" ? "kids" : "adult") + (m.beltSince ? " · " + pr.have + " mo" : "") + "</span></td>" +
       "<td>" + (pr.need ? '<div class="bar' + (pr.have >= pr.need ? " full" : "") + '"><i style="width:' + pr.pct + '%"></i></div><span class="muted small">' + pr.have + " / " + pr.need + " months</span>" : '<span class="muted small">—</span>') + "</td>" +
       '<td><span class="pill ' + (ms.state === "active" ? "ok" : ms.state === "expired" ? "bad" : "") + '">' + esc(ms.text) + "</span>" + (pend.length ? '<br><button class="btn" style="margin-top:4px" data-act="pay-ok" data-club="' + c.id + '" data-who="' + key + '" data-id="' + pend[0].id + '">Confirm ' + esc(pend[0].per) + "</button>" : "") + "</td>" +
@@ -175,11 +192,13 @@ function memberModal(clubId, id) {
   const c = D.clubs.find((x) => x.id === clubId); const doc = D.members[clubId] || { list: [] }; const m = id ? doc.list.find((x) => x.id === id) : null; const track = m ? m.track || "adult" : "adult";
   const body = '<div class="grid"><label class="field">Name<input name="n" required value="' + esc(m ? m.n : "") + '"></label><label class="field">Phone<input name="phone" value="' + esc(m ? m.phone || "" : "") + '"></label></div>' +
     (m && m.uid ? '<p class="small muted">Login: ' + esc((m.email || "").replace("@" + MEMBER_DOMAIN, "")) + "</p>" : '<div class="grid"><label class="field">Username or email' + (m ? "" : " (for their login)") + '<input name="login" value="' + esc(m ? (m.email || "").replace("@" + MEMBER_DOMAIN, "") : "") + '" placeholder="bat or bat@mail.com"></label><label class="field">Password (6+ · creates the login)<input name="pw" type="text" autocomplete="new-password" minlength="6" placeholder="leave empty: no login yet"></label></div>') +
+    '<label class="field">Date of birth (private)<input name="birthDate" type="date" max="' + todayIso() + '"></label><p class="muted small">Only you and the member can see their age.</p>' +
     '<div class="grid"><label class="field">Age group<select name="track" id="m-track"><option value="adult"' + (track === "adult" ? " selected" : "") + '>Adult 16+</option><option value="kids"' + (track === "kids" ? " selected" : "") + '>Kids 4–15</option></select></label><label class="field">Belt<select name="belt" id="m-belt">' + beltOptions(track, m ? m.belt : "white") + '</select></label><label class="field">Stripes<select name="stripes">' + [0, 1, 2, 3, 4].map((s) => '<option value="' + s + '"' + (m && +m.stripes === s ? " selected" : "") + ">" + s + "</option>").join("") + "</select></label></div>" +
     '<div class="grid"><label class="field">Belt since<input name="beltSince" type="date" value="' + esc(m ? m.beltSince || "" : "") + '"></label><label class="field">Member since<input name="since" type="date" value="' + esc(m ? m.since || todayIso() : todayIso()) + '"></label><label class="field">Competition team<select name="comp"><option value="">No</option><option value="1"' + (m && m.comp ? " selected" : "") + ">Yes</option></select></label></div>";
   modal(m ? "Edit member · " + c.n : "Add a member · " + c.n, body, async (f) => {
     const rec = m || { id: uid(), uid: null }; rec.n = f.get("n").trim(); rec.phone = f.get("phone").trim(); rec.track = f.get("track"); rec.belt = f.get("belt"); rec.stripes = +f.get("stripes"); rec.beltSince = f.get("beltSince"); rec.since = f.get("since") || todayIso(); rec.comp = !!f.get("comp"); rec.coachSet = true; rec.setBy = SB.uid();
-    if (!(m && m.uid)) { const login = (f.get("login") || "").trim(); const pw = f.get("pw") || ""; if (login) rec.email = emailOf(login); if (login && pw) { const u = await SB.createUser(rec.email, pw, rec.n); rec.uid = u.id; if (!u.confirmed) toast("Login created, but Supabase wants the email confirmed first"); } }
+    if (!(m && m.uid)) { const login = (f.get("login") || "").trim(); const pw = f.get("pw") || ""; if (login) rec.email = emailOf(login); if (login && pw) { const dob = f.get("birthDate"); if (ARROW.age(dob) === null) throw new Error("Enter a valid date of birth"); const u = await SB.createUser(rec.email, pw, rec.n, dob, ARROW.username(login.split("@")[0])); rec.username = ARROW.username(login.split("@")[0]); rec.socialAllowed = ARROW.age(dob) >= 13; rec.uid = u.id; if (!u.confirmed) toast("Login created, but Supabase wants the email confirmed first"); } }
+    const dob = f.get("birthDate"); if (dob) { const age = ARROW.age(dob); if (age === null) throw new Error("Enter a valid date of birth"); rec.ageSealed = rec.ageSealed || {}; for (const coach of c.admins || []) { if ((c.ageKeys || {})[coach]) rec.ageSealed[coach] = await ARROW.sealAge(dob, c.ageKeys[coach]); } rec.socialAllowed = age >= 13; }
     if (!m) doc.list.push(rec); await SB.set("club/" + clubId + "/members", doc); toast(m ? "Saved" : rec.uid ? "Member added with a login" : "Member added");
   });
   setTimeout(() => { const t = document.getElementById("m-track"); if (t) t.onchange = () => { document.getElementById("m-belt").innerHTML = beltOptions(t.value, "white"); }; }, 0);

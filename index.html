@@ -12,8 +12,8 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-title" content="Jiu-jitsu">
-<title>Jiu-jitsu · Chinbilig</title>
+<meta name="apple-mobile-web-app-title" content="Arrow">
+<title>Arrow · Jiu-jitsu</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,600;12..96,700;12..96,800&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap">
@@ -596,6 +596,18 @@ button.av{border:0;padding:0;cursor:pointer;font:inherit;font-family:var(--displ
 @keyframes fadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
 @keyframes slideL{from{opacity:0;transform:translateX(24px)}to{opacity:1;transform:none}}
 @keyframes slideR{from{opacity:0;transform:translateX(-24px)}to{opacity:1;transform:none}}
+
+/* Arrow mobile refinements */
+[hidden]{display:none!important}
+.who{position:relative}.who .notice-bell{position:absolute;right:0;top:0;width:36px;height:36px;padding:6px;justify-content:center}.notice-bell{position:relative;min-width:40px;font-size:1.5rem}.notice-count{position:absolute;right:0;top:0;background:var(--accent,#fc4c02);color:white;border-radius:99px;font-size:.65rem;padding:2px 5px}
+.seg-wrap{position:relative}.seg-wrap .seg{padding-right:32px}.seg-more{position:absolute;right:0;top:0;height:100%;width:30px;display:grid;place-items:center;font-size:1.6rem;background:linear-gradient(90deg,transparent,var(--surface) 50%);pointer-events:none}.seg-hint{font-size:.72rem;color:var(--muted);text-align:right;margin:3px 3px 10px}
+.live-detail{border:0;background:none;color:var(--accent,#fc4c02);font-size:.72rem;min-height:32px;padding:4px 0;display:block;text-align:center;width:100%}
+.club-codes summary{cursor:pointer;padding:12px 0;color:var(--muted);font-size:.85rem}
+.cal .grid .cal-date{font-size:.85rem;position:relative;border:0;background:transparent;border-radius:10px;min-width:0;min-height:42px;padding:4px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;color:var(--ink)}
+.cal .grid .cal-date.on{background:var(--accent,#fc4c02);color:white}.cal .grid .cal-date.today{outline:1px solid var(--accent,#fc4c02)}.cal .grid .cal-date.miss{color:var(--bad)}
+.cal-marks{display:flex;gap:3px;min-height:5px}.cal-marks i{width:5px;height:5px;border-radius:50%;background:#508ae5}.cal-marks .kids{background:#af72dc}.cal-marks .openmat{background:#31ad83}
+.cal-legend{display:flex;gap:14px;font-size:.72rem;color:var(--muted);margin-top:10px}.cal-legend span:before{content:' ';display:inline-block;width:7px;height:7px;background:#508ae5;border-radius:50%;margin-right:4px}.cal-legend .kids:before{background:#af72dc}.cal-legend .openmat:before{background:#31ad83}
+.avpick-b{min-width:0;flex:1}.avpick-b input[type=file]{max-width:100%;font-size:16px}.sharecv{max-height:44vh}.sharecv+.actions{position:sticky;bottom:0;background:var(--surface);padding-block:10px}
 </style>
 </head>
 <body>
@@ -604,7 +616,7 @@ button.av{border:0;padding:0;cursor:pointer;font:inherit;font-family:var(--displ
     <div class="top-row">
       <button class="hdr-av" id="hdr-av" data-act="profile" aria-label="My profile"></button>
       <div class="who">
-        <h1 id="title">Jiu-jitsu</h1>
+        <h1 id="title">Arrow</h1><button class="icon-btn notice-bell" id="arrow-notices" data-act="arrow-notices" aria-label="Club notifications"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4"/></svg></button>
         <div class="belt" id="belt" role="img" aria-label="Belt"></div>
         <div class="sync" id="sync"><span class="dot"></span><span id="sync-t">Loading…</span></div>
       </div>
@@ -619,9 +631,10 @@ button.av{border:0;padding:0;cursor:pointer;font:inherit;font-family:var(--displ
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 <script src="config.js"></script>
 <script src="qr.js?v=1"></script>
-<script src="lang-mn.js?v=9"></script>
+<script src="lang-mn.js?v=10"></script>
 <script src="meta.js?v=3"></script>
 <script src="seed.js?v=8"></script>
-<script src="app.js?v=27"></script>
+<script src="arrow-core.js?v=1"></script>
+<script src="app.js?v=28"></script>
 </body>
 </html>
