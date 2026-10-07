@@ -56,6 +56,17 @@ opens the camera at once and scans the QR (`BarcodeDetector`, else `vendor/jsQR.
 the club code can be typed instead, and the sheet carries quick buttons for log training, roll, drills
 and share (`rec-go`).
 
+Technique tab segments (scrollable): Roll | Mine (N) | Discover | Setups | Learn | Plans | History.
+Discover (`vDiscover`, `DISC_CATS`) lists distinct technique names per category (move type, plus guard
+and top positions) with a "+" that adds every node of that name to `S.settings.mine`; Mine (`vMine`)
+shows that list grouped by category; `vNode` has the "+ Add to mine" pill. You tab segments: Progress |
+Log | Drills | Body | Rank | Weight | Compete. Progress (`VIEWS.prog`) = training calendar (`UI.calYm`),
+analytics (`UI.anaRange` month|30|all), weekly `CHALLENGES` (snapshot `S.settings.mineWeek`, share flag
+`S.settings.sharedWk`) and `ACHIEVEMENTS`; XP (`xpTotal`) and level (`levelOf`, 300 XP per level) show in
+`profileHead`. Seed v6 added 14 positions (reverse DLR, lasso, 50/50, deep half, Z, rubber, worm, ashi
+garami, north-south top/bottom, front headlock, crucifix, under knee on belly, under scarf hold) and ~90
+moves (leg locks carry `kids:false` + `legal`).
+
 `admin.html` + `admin.js` is the desktop console (same Supabase session). App admins see every
 club (overview, clubs, members, payments, competitions, upgrades, settings); a coach (in a club's
 `profile.admins`) sees their club only. Members can be created with a login: a username becomes
