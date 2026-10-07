@@ -44,14 +44,14 @@ attendance list; medals a member records wait for the coach's approval.
 
 The layout follows Strava: Home shows the club feed (one card per teammate's training with minutes,
 rounds, techniques, the day's roll path and the streak; 👊 kudos), the orange button in the middle of
-the tab bar records (log training, start a roll, check in, do a drill, share), and You holds the
+the tab bar checks in at the club (with shortcuts for log training, roll, drills, share), and You holds the
 profile with the personal sections. Feed posts are club docs at `club/<id>/feed/<yyyy-mm>`.
 
 ## Club QR at the door
 
-Coaches open Club → "Club QR for the door" and print the poster once. Members tap Record → "I'm on
-the mat", scan the QR in the app (where the browser supports it), open it with the phone camera, or
-type the club code printed under it, and today's attendance is marked. A person who is not a member
+Coaches open Club → "Club QR for the door" and print the poster once. Members tap the orange button in the
+middle of the tab bar: the camera opens, they point it at the QR and today's attendance is marked
+(works on iPhone and Android; the club code printed under the QR can be typed instead). A person who is not a member
 yet joins the club first; someone without an account creates one with a plain username and lands
 checked in.
 

@@ -39,8 +39,8 @@ as app admin. Club docs also hold `att/<yyyy-mm>` (attendance, keyed by uid or r
 `IAP` wraps a Capacitor/RevenueCat or `window.IAP` purchase bridge; without one the upgrade sheet
 falls back to a transfer. Drills: `SEED.drills` (kind solo|partner|sub|td|esc|flow, `tech` names link to moves by name) plus
 the user's own in `S.body.drills`; a done drill is a `S.body.items` row with `cat: "drill"`.
-Tabs (Strava-like, orange accent): Home (club feed), Technique, a round Record button in the
-middle (`recordSheet`: log training, start a roll, check in, drill, share), Club (Today | Schedule |
+Tabs (Strava-like, orange accent): Home (club feed), Technique, a round Check-in button in the
+middle (camera scanner, see below), Club (Today | Schedule |
 Members | Pay), You (`profileHead` + scrollable segments Log | Drills | Body | Rank | Weight |
 Compete; `TAB_ALIAS` maps the old `train` tab and segment ids to `me`). The feed lives in
 `club/<id>/feed/<yyyy-mm>` (`feedPost` on every saved training: minutes, rounds, techniques, the
@@ -51,8 +51,10 @@ the door. A coach or app admin opens Club → "Club QR for the door" (`qrSheet`:
 `qrImage`, copy, share). Link `<app>?checkin=<clubId>&c=<club code>` (`?join=…` joins only). Boot keeps
 the parsed pair in localStorage `bjj-join` and strips it from the URL; the sign-in screen opens in sign-up
 mode with a banner, and `joinPending()` (after the club loaded) joins a non-member and then calls
-`checkinWith(code)` → `attMark(today)`. Members also check in from Record → "I'm on the mat"
-(`checkinSheet`): in-app scan with `BarcodeDetector` where available, else type the club code.
+`checkinWith(code)` → `attMark(today)`. The middle tab button ("Check in", `checkinSheet(true)`)
+opens the camera at once and scans the QR (`BarcodeDetector`, else `vendor/jsQR.js` loaded on demand);
+the club code can be typed instead, and the sheet carries quick buttons for log training, roll, drills
+and share (`rec-go`).
 
 `admin.html` + `admin.js` is the desktop console (same Supabase session). App admins see every
 club (overview, clubs, members, payments, competitions, upgrades, settings); a coach (in a club's
