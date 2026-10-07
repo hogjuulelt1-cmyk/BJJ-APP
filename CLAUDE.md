@@ -46,14 +46,13 @@ Compete; `TAB_ALIAS` maps the old `train` tab and segment ids to `me`). The feed
 `club/<id>/feed/<yyyy-mm>` (`feedPost` on every saved training: minutes, rounds, techniques, the
 day's roll path, streak, `kudos` uids); `clubLoad` reads this and last month, `feedKudos` toggles 👊.
 Without a club the Home tab shows the user's own sessions.
-QR codes (`qr.js`, own encoder, byte mode/level M/versions 1-9). A coach or app admin opens Club →
-"Check-in QR" / "Join QR" (`qrSheet(kind)`, copy, share, poster image via `qrImage`). Join link:
-`<app>?join=<clubId>&c=<club code>`. Check-in link: `?checkin=<clubId>&c=<code>&d=<date>&t=<token>`,
-token = `attToken(code, date)` (4 chars, shown under the QR so it can be typed), valid that day only.
-Boot keeps the parsed pair in localStorage `bjj-join` and strips it from the URL; the sign-in screen
-opens in sign-up mode with a banner, and `joinPending()` (after the club loaded) joins the club and,
-for a check-in, calls `checkinWith(d, t)` → `attMark(today)`. Members check in from Record → "I'm on
-the mat" (`checkinSheet`): in-app scan with `BarcodeDetector` where available, else type the code.
+Club QR (`qr.js`, own encoder, byte mode/level M/versions 1-9): one permanent code per club, printed at
+the door. A coach or app admin opens Club → "Club QR for the door" (`qrSheet`: QR, club code, poster via
+`qrImage`, copy, share). Link `<app>?checkin=<clubId>&c=<club code>` (`?join=…` joins only). Boot keeps
+the parsed pair in localStorage `bjj-join` and strips it from the URL; the sign-in screen opens in sign-up
+mode with a banner, and `joinPending()` (after the club loaded) joins a non-member and then calls
+`checkinWith(code)` → `attMark(today)`. Members also check in from Record → "I'm on the mat"
+(`checkinSheet`): in-app scan with `BarcodeDetector` where available, else type the club code.
 
 `admin.html` + `admin.js` is the desktop console (same Supabase session). App admins see every
 club (overview, clubs, members, payments, competitions, upgrades, settings); a coach (in a club's

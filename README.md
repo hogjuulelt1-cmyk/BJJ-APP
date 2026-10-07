@@ -47,14 +47,13 @@ rounds, techniques, the day's roll path and the streak; 👊 kudos), the orange 
 the tab bar records (log training, start a roll, check in, do a drill, share), and You holds the
 profile with the personal sections. Feed posts are club docs at `club/<id>/feed/<yyyy-mm>`.
 
-## QR check-in and join
+## Club QR at the door
 
-Coaches open Club → "Check-in QR": a code that changes every day (the link carries the date and a
-4-character code derived from the club code). Show it on a phone or tablet at the door, or save the
-poster. Members tap Record → "I'm on the mat", scan the QR in the app (where the browser supports
-it) or type the 4 characters, and today's attendance is marked. A person who is not a member yet
-joins the club first; someone without an account creates one with a plain username and lands
-checked in. "Join QR" is the same without a date, for sign-up posters.
+Coaches open Club → "Club QR for the door" and print the poster once. Members tap Record → "I'm on
+the mat", scan the QR in the app (where the browser supports it), open it with the phone camera, or
+type the club code printed under it, and today's attendance is marked. A person who is not a member
+yet joins the club first; someone without an account creates one with a plain username and lands
+checked in.
 
 ## Language
 
