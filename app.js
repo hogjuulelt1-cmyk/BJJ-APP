@@ -328,6 +328,7 @@ function beltHtml(big) {
   const bar = b.id === "black" ? "#c62828" : "#111114";
   return '<span class="b-main">' + beltSwatch(b) + '</span><span class="b-bar" style="background:' + bar + '">' + "<i></i>".repeat(st) + "</span>";
 }
+function renderHeader() { const el = $("hdr-av"); if (!el) return; el.textContent = initials(myName()); const t = $("title"); if (t && t.textContent !== "Jiu-jitsu" && I18N.lang === "en") t.textContent = "Jiu-jitsu"; }
 function renderBelt() { const el = $("belt"); if (!el) return; el.dataset.act = "belt-page"; el.dataset.v = "open"; el.style.cursor = "pointer"; const b = beltDef(S.belt.track, S.belt.belt); el.innerHTML = beltHtml(); el.setAttribute("aria-label", b.n + " belt, " + (S.belt.stripes || 0) + " stripes"); }
 
 /* ---------- tabs & render ---------- */
@@ -344,7 +345,7 @@ function renderTabs() {
 }
 const VIEWS = {};
 function render(anim) {
-  renderBelt(); renderTabs();
+  renderBelt(); renderHeader(); renderTabs();
   if (TAB_ALIAS[UI.tab]) { if (UI.tab !== "train") UI.seg[TAB_ALIAS[UI.tab]] = UI.tab; UI.tab = TAB_ALIAS[UI.tab]; }
   const m = $("main"); const fn = VIEWS[UI.tab] || VIEWS.tech;
   m.className = ""; m.innerHTML = fn(); if (anim) { void m.offsetWidth; m.className = anim; }
@@ -1415,12 +1416,49 @@ function matchSheet(eid, i) {
 /* ======================= SETTINGS ======================= */
 function settingsSheet() {
   const b = field("f-name", "Your name (shown to your club)", inp("f-name", S.settings.name || "", "text", 'placeholder="Name"')) + '<div class="field"><span class="lbl">Language</span>' + chips("lang", [["mn", "Монгол"], ["en", "English"]], I18N.lang) + "</div>" + '<div class="field"><span class="lbl">Theme</span>' + chips("theme", [["system", "Device"], ["light", "Light"], ["dark", "Dark"]], S.settings.theme || "system") + "</div>" +
-    '<div class="field"><span class="lbl">Data</span><div class="actions"><button class="btn ghost" data-act="backup">Download backup (JSON)</button><label class="btn ghost" style="display:flex;align-items:center;justify-content:center">Restore from backup<input id="imp-file" type="file" accept="application/json" hidden></label></div></div>' +
     '<div class="field"><span class="lbl">Ruleset</span>' + chips("rules", [["both", "Gi & no-gi"], ["gi", "Gi only"], ["nogi", "No-gi only"]], S.settings.rules || "both") + '</div><div class="field"><span class="lbl">Belt filter</span>' + chips("beltf", [["0", "Show all"], ["1", "Only up to my belt"]], S.settings.beltFilter ? "1" : "0") + "</div>" +
     '<div class="field"><span class="lbl">Technique library</span><button class="btn ghost' + (UI.confirm === "reset" ? " danger" : "") + '" data-act="reset-seed">' + (UI.confirm === "reset" ? "Really reset? Everything you added will be lost" : "Reload the starter library") + "</button></div>" +
-    '<p class="muted small">' + (mode === "cloud" ? "Signed in: " + esc(loginName((SB.session || {}).email || "")) : "Local mode: data stays on this device only.") + "</p>" + ((isSuper() || isAdmin()) && mode === "cloud" ? '<a class="btn ghost" href="admin.html" style="display:flex;align-items:center;justify-content:center;text-decoration:none">Open the admin console</a>' : "") +
-    (mode === "cloud" ? '<button class="btn ghost danger" data-act="logout">' + (UI.confirm === "logout" ? "Sign out?" : "Sign out") + "</button>" : "");
+    '<p class="muted small">' + (mode === "cloud" ? "Signed in: " + esc(loginName((SB.session || {}).email || "")) : "Local mode: data stays on this device only.") + "</p>" + ((isSuper() || isAdmin()) && mode === "cloud" ? '<a class="btn ghost" href="admin.html" style="display:flex;align-items:center;justify-content:center;text-decoration:none">Open the admin console</a>' : "");
   openSheet("Settings", b, { state: { picks: { theme: S.settings.theme || "system", rules: S.settings.rules || "both", beltf: S.settings.beltFilter ? "1" : "0" } }, onSave() { S.settings.name = sv("f-name").trim(); save("settings"); if (CLUB.id) clubUpdateMe(); render(); return true; } });
+}
+/* Menu (☰ in the header): the places that are not a tab, plus settings and sign out. */
+function menuSheet() {
+  const row = (act, ic, t, sub, cls, attrs) => '<button class="mrow' + (cls ? " " + cls : "") + '" data-act="' + act + '"' + (attrs ? " " + attrs : "") + '><span class="mic">' + ic + '</span><span class="txt"><b>' + t + "</b>" + (sub ? "<small>" + sub + "</small>" : "") + "</span>" + CHEV + "</button>";
+  const b = beltDef(S.belt.track, S.belt.belt); const sk = streaks();
+  let h = '<div class="menu">' + row("profile", "👤", "My profile", esc(myName())) + row("menu-go", "📈", "Progress", "Level " + levelOf(xpTotal()) + (sk.weeks ? " · " + sk.weeks + " week streak" : ""), "", 'data-v="prog"') +
+    row("menu-go", "🏠", "My club", CLUB.profile ? esc(CLUB.profile.n) : "", "", 'data-v="club"') + row("menu-go", "🗺️", "Technique map", "", "", 'data-v="map"') + row("menu-go", "🥋", "Belt and rank", esc(b.n) + " belt" + (S.belt.stripes ? ", " + S.belt.stripes + " stripes" : ""), "", 'data-v="belt"') +
+    (S.log.items.length ? row("menu-share", "📸", "Share the last session") : "") + row("menu-lang", "🌐", "Language", I18N.lang === "mn" ? "Монгол → English" : "English → Монгол") + row("menu-settings", "⚙️", "Settings") +
+    ((isSuper() || isAdmin()) && mode === "cloud" ? '<a class="mrow" href="admin.html" data-act="menu-admin"><span class="mic">🧑‍🏫</span><span class="txt"><b>Coach console</b></span>' + CHEV + "</a>" : "") +
+    (mode === "cloud" ? row("logout", "🚪", UI.confirm === "logout" ? "Sign out?" : "Sign out", esc(loginName((SB.session || {}).email || "")), "danger") : "") + "</div>";
+  openSheet("Menu", h, {});
+}
+/* Social profile: my page (VIEWS.profile, opened from the avatar) and a teammate's sheet (profileSheet). */
+function myHandle() { return mode === "cloud" ? loginName((SB.session || {}).email || "") || "me" : "local"; }
+function kudosFor(uidv) { return (CLUB.feed || []).filter((p) => p.uid === uidv).reduce((a, p) => a + ((p.kudos || []).length), 0); }
+function subCounts() { const c = {}; let n = 0; for (const s of S.log.items) for (const x of s.subs || []) { const nm = x && typeof x === "object" ? x.n : x; if (!nm) continue; const k = +x.c || 1; n += k; c[nm] = (c[nm] || 0) + k; } return { n, top: Object.entries(c).sort((a, b) => b[1] - a[1]).slice(0, 5) }; }
+VIEWS.profile = function () {
+  const name = myName(); const b = beltDef(S.belt.track, S.belt.belt); const sk = streaks(); const lv = levelOf(xpTotal()); const items = sessionsSorted(); const sc = subCounts();
+  let h = '<div class="pf-nav"><button class="icon-btn" data-act="profile-back">‹ Back</button></div>';
+  h += '<div class="card profile pf"><div class="av xl">' + esc(initials(name)) + '</div><div><h2>' + esc(name) + '</h2><p class="handle-name">@' + esc(myHandle()) + '</p></div><span class="pill ok">Level ' + lv + "</span>" +
+    '<div class="pf-row"><span><i>👊</i> ' + kudosFor(myUid()) + " kudos</span><span><i>🔥</i> " + sk.weeks + " week streak</span></div>" +
+    '<div class="belt big" role="img" aria-label="' + esc(b.n) + ' belt">' + beltHtml(true) + '</div><p class="muted small">' + esc(b.n) + " belt" + (S.belt.stripes ? ", " + S.belt.stripes + " stripes" : "") + "</p></div>";
+  h += '<div class="card"><div class="pf-kv"><span class="lbl">Gym / Academy</span><b>' + (CLUB.profile ? esc(CLUB.profile.n) : "—") + '</b></div><div class="pf-kv"><span class="lbl">Bio</span>' + (S.settings.bio ? "<p>" + esc(S.settings.bio) + "</p>" : '<p class="muted">No bio yet</p>') + '</div><button class="btn ghost wide" data-act="profile-edit">Edit</button></div>';
+  h += '<div class="card"><div class="summary"><div class="stat"><b>' + items.length + '</b><span>sessions</span></div><div class="stat"><b>' + sc.n + '</b><span>submissions</span></div><div class="stat"><b>' + (S.settings.mine || []).length + "</b><span>techniques</span></div></div></div>";
+  h += '<div class="pf-cols"><div class="card"><h3>Recent sessions</h3>' + (items.length ? '<div class="list">' + items.slice(0, 5).map((s) => '<button class="row" data-act="edit-sess" data-id="' + s.id + '"><div class="txt"><b>' + fmtD(s.d) + "</b><small>" + (SNAME[s.type] || s.type) + " · " + (+s.min || 0) + " min</small></div></button>").join("") + "</div>" : '<p class="empty">No sessions yet</p>') + "</div>" +
+    '<div class="card"><h3>Top submissions</h3>' + (sc.top.length ? '<div class="list">' + sc.top.map((x) => '<div class="row"><div class="txt"><b>' + esc(x[0]) + '</b></div><span class="cnt">' + x[1] + "</span></div>").join("") + "</div>" : '<p class="empty">No submissions yet</p>') + "</div></div>";
+  return h;
+};
+function profileEditSheet() {
+  const b = field("f-name", "Your name (shown to your club)", inp("f-name", S.settings.name || "", "text", 'placeholder="Name"')) + field("f-bio", "Bio", ta("f-bio", S.settings.bio || "", "A few words about you: since when you train, what you like…"));
+  openSheet("Edit profile", b, { onSave() { S.settings.name = sv("f-name").trim(); S.settings.bio = sv("f-bio").trim().slice(0, 300); save("settings"); if (CLUB.id) clubUpdateMe(); render(); return true; } });
+}
+function profileSheet(uidv) {
+  const m = ((CLUB.members && CLUB.members.list) || []).find((x) => x.uid === uidv || x.id === uidv); const posts = (CLUB.feed || []).filter((p) => p.uid === uidv);
+  const name = (m && (m.n || m.email)) || (posts[0] && posts[0].n) || "Member"; const bid = (m && m.belt) || (posts[0] && posts[0].belt); const b = bid ? beltDef((m && m.track) || "adult", bid) : null; const wk = posts.length ? +posts[0].weeks || 0 : 0;
+  let h = '<div class="pf"><div class="prow" style="flex-direction:column;text-align:center;gap:6px"><div class="av xl">' + esc(initials(name)) + '</div><h2 style="font-size:1.3rem">' + esc(name) + "</h2>" + (b ? '<p class="muted small">' + esc(b.n) + " belt" + (m && m.stripes ? ", " + m.stripes + " stripes" : "") + "</p>" : "") +
+    '<div class="pf-row"><span><i>👊</i> ' + kudosFor(uidv) + " kudos</span><span><i>🥋</i> " + posts.length + " sessions</span>" + (wk ? "<span><i>🔥</i> " + wk + " week streak</span>" : "") + "</div></div></div>";
+  h += '<div class="list">' + (posts.length ? posts.slice(0, 3).map((p) => '<div class="row"><div class="txt"><b>' + (FEED_TITLE[p.type] || "Training") + "</b><small>" + fmtLong(p.d) + " · " + (+p.min || 0) + " min" + (p.rounds ? " · " + p.rounds + " rounds" : "") + "</small></div>" + ((p.kudos || []).length ? '<span class="muted small">👊 ' + p.kudos.length + "</span>" : "") + "</div>").join("") : '<p class="empty">No training posted yet</p>') + "</div>";
+  openSheet("Profile", h, {});
 }
 function applyTheme() { const t = S.settings.theme || "system"; if (t === "system") delete document.documentElement.dataset.theme; else document.documentElement.dataset.theme = t; try { localStorage.setItem("bjj-theme", t); } catch (e) {} }
 function download(name, text) { const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([text], { type: "application/json" })); a.download = name; document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000); }
@@ -1961,6 +1999,16 @@ document.addEventListener("click", (e) => {
   switch (act) {
     case "tab": { const order = TABS.map((t) => t[0]); const anim = order.indexOf(ds.v) > order.indexOf(UI.tab) ? "enter-l" : "enter-r"; UI.tab = ds.v; try { localStorage.setItem("bjj-tab", ds.v); } catch (x) {} go(anim); break; }
     case "settings": settingsSheet(); break;
+    case "menu": menuSheet(); break;
+    case "profile": if (UI.sheet) closeSheet(); if (UI.tab !== "profile") { UI.prevTab = UI.tab; UI.tab = "profile"; go("enter-l"); } break;
+    case "profile-back": UI.tab = UI.prevTab && VIEWS[UI.prevTab] && UI.prevTab !== "profile" ? UI.prevTab : "home"; UI.prevTab = null; go("enter-r"); break;
+    case "profile-edit": profileEditSheet(); break;
+    case "member-profile": if (UI.sheet) closeSheet(); if (!ds.uid || ds.uid === myUid()) { if (UI.tab !== "profile") { UI.prevTab = UI.tab; UI.tab = "profile"; go("enter-l"); } } else profileSheet(ds.uid); break;
+    case "menu-go": closeSheet(); if (ds.v === "prog") { UI.tab = "me"; UI.seg.me = "prog"; } else if (ds.v === "club") UI.tab = "club"; else if (ds.v === "map") { UI.tab = "tech"; UI.tech.q = ""; UI.tech.view = "pos"; UI.setupEd = null; UI.tech.map = true; if (!(UI.tech.id && node(UI.tech.id))) UI.tech.id = (positions()[0] || {}).id || null; try { localStorage.setItem("bjj-map", "1"); } catch (x) {} } else if (ds.v === "belt") { UI.tab = "me"; UI.seg.me = "belt"; UI.beltPage = true; } try { localStorage.setItem("bjj-tab", UI.tab); } catch (x) {} go("enter"); break;
+    case "menu-share": closeSheet(); shareSheet(null); break;
+    case "menu-lang": { const l = I18N.lang === "mn" ? "en" : "mn"; S.settings.lang = l; save("settings"); I18N.set(l); closeSheet(); render(); break; }
+    case "menu-settings": closeSheet(); settingsSheet(); break;
+    case "menu-admin": closeSheet(); break;
     case "record": checkinSheet(true); break;
     case "rec-go": closeSheet(); if (ds.v === "sess") sessSheet(); else if (ds.v === "roll") { UI.tab = "tech"; UI.tech.id = null; UI.tech.q = ""; UI.tech.view = "pos"; UI.setupEd = null; go("enter"); } else if (ds.v === "att") checkinSheet(true); else if (ds.v === "drill") { UI.tab = "me"; UI.seg.me = "drills"; go("enter"); } else if (ds.v === "share") shareSheet(null); break;
     case "kudos": feedKudos(ds.id, ds.d); break;
@@ -2086,7 +2134,7 @@ document.addEventListener("click", (e) => {
     case "edit-match": matchSheet(ds.id, +ds.i); break;
     case "backup": download("bjj-backup-" + todayIso() + ".json", JSON.stringify(S, null, 2)); break;
     case "reset-seed": if (UI.confirm === "reset") { UI.confirm = null; seedAll(true); save("tree"); save("plans"); save("body"); UI.tech.id = null; closeSheet(); render(); toast("Starter library loaded"); } else { UI.confirm = "reset"; settingsSheet(); setTimeout(() => { if (UI.confirm === "reset") { UI.confirm = null; if (UI.sheet) settingsSheet(); } }, 3500); } break;
-    case "logout": if (UI.confirm === "logout") { SB.storeSession(null); location.reload(); } else { UI.confirm = "logout"; settingsSheet(); setTimeout(() => { if (UI.confirm === "logout") { UI.confirm = null; if (UI.sheet) settingsSheet(); } }, 3500); } break;
+    case "logout": if (UI.confirm === "logout") { SB.storeSession(null); location.reload(); } else { UI.confirm = "logout"; menuSheet(); setTimeout(() => { if (UI.confirm === "logout") { UI.confirm = null; if (UI.sheet) menuSheet(); } }, 3500); } break;
   }
 });
 function armConfirmSheet(btn) { if (btn.dataset.armed) return true; btn.dataset.armed = "1"; btn.textContent = "Delete?"; setTimeout(() => { if (btn.isConnected) { delete btn.dataset.armed; btn.textContent = "Delete"; } }, 3500); return false; }

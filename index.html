@@ -77,9 +77,11 @@ button{cursor:pointer}
 
 /* header */
 header.top{display:flex;flex-direction:column;gap:8px;padding-block:14px 0}
-.top-row{display:flex;align-items:center;justify-content:space-between;gap:12px}
-.who{display:flex;flex-direction:column;gap:6px;min-width:0}
-.who h1{font-size:1.75rem;font-weight:800;letter-spacing:-.03em}
+.top-row{display:grid;grid-template-columns:36px minmax(0,1fr) 36px;align-items:center;gap:12px}
+.who{display:flex;flex-direction:column;align-items:center;text-align:center;gap:4px;min-width:0}
+.who h1{font-size:1.35rem;font-weight:800;letter-spacing:-.03em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+.who .belt{height:8px;width:110px;max-width:100%}
+.who .sync{justify-content:center}
 .belt{display:flex;height:12px;width:150px;max-width:min(60vw,100%);border-radius:2px;overflow:hidden;border:1px solid var(--line)}
 .belt .b-main{flex:1;display:flex}
 .belt .b-main i{flex:1}
@@ -90,9 +92,31 @@ header.top{display:flex;flex-direction:column;gap:8px;padding-block:14px 0}
 .sync{font-size:.74rem;color:var(--muted);display:flex;align-items:center;gap:6px;font-weight:500}
 .sync .dot{width:8px;height:8px;border-radius:50%;background:var(--muted)}
 .sync.ok .dot{background:var(--ok)} .sync.saving .dot{background:var(--warn)} .sync.err .dot{background:var(--bad)}
-.hdr-btns{display:flex;gap:8px;flex:none}
+.hdr-av,.hdr-menu{width:36px;height:36px;border-radius:50%;border:1px solid var(--line);background:var(--surface);box-shadow:var(--shadow);padding:0;display:flex;align-items:center;justify-content:center;flex:none}
+.hdr-av{background:var(--accent);border-color:transparent;color:#fff;font-family:var(--display);font-weight:700;font-size:.9rem;letter-spacing:.02em}
+.hdr-menu{color:var(--ink)} .hdr-menu svg{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round}
+body.locked .hdr-av,body.locked .hdr-menu{visibility:hidden}
 .icon-btn{min-height:36px;border:1px solid var(--line);background:var(--surface);color:var(--accent);box-shadow:none;border-radius:999px;padding:6px 12px;font-size:.84rem;font-weight:600;text-decoration:none;display:inline-flex;align-items:center}
 body.locked .icon-btn{display:none}
+
+/* menu sheet & profile page */
+.menu{display:flex;flex-direction:column}
+.mrow{display:flex;align-items:center;gap:12px;width:100%;text-align:left;border:0;border-top:1px solid var(--line);background:none;padding:9px 0;min-height:58px;color:inherit;text-decoration:none}
+.mrow:first-child{border-top:0}
+.mrow .mic{width:40px;height:40px;border-radius:50%;background:var(--accent-soft);display:flex;align-items:center;justify-content:center;font-size:1.15rem;flex:none}
+.mrow .txt{flex:1;min-width:0} .mrow .txt b{display:block;font-weight:600} .mrow .txt small{display:block;color:var(--muted);font-size:.8rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mrow.danger .txt b{color:var(--bad)} .mrow.danger .mic{background:var(--bad-soft)}
+#sheet-body:has(.menu) .foot{display:none}
+.pf-nav{display:flex} .pf-nav .icon-btn{padding-inline:10px 14px}
+.card.pf{align-items:center;text-align:center;gap:8px}
+.av.xl{width:84px;height:84px;font-size:1.9rem}
+.pf h2{font-size:1.4rem} .pf .handle-name{color:var(--muted);font-size:.9rem;margin-top:-4px}
+.pf-row{display:flex;gap:18px;justify-content:center;font-weight:600;font-size:.95rem;flex-wrap:wrap} .pf-row i{font-style:normal}
+.pf .belt.big{margin-top:4px}
+.pf-kv{display:flex;flex-direction:column;gap:2px;padding:8px 0;border-top:1px solid var(--line)} .pf-kv:first-child{border-top:0;padding-top:0} .pf-kv b{font-weight:600} .pf-kv p{white-space:pre-wrap}
+.pf-cols{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px} .pf-cols .card{padding:12px;gap:6px} .pf-cols h3{font-size:.95rem} .pf-cols .row{padding:7px 0} .pf-cols .row .txt b{font-size:.9rem} .pf-cols .row .txt small{font-size:.76rem}
+.pf-cols .cnt{font-family:var(--display);font-weight:700;color:var(--accent);flex:none}
+.pf-cols .empty{padding:10px 0;font-size:.84rem}
 
 /* nav */
 nav.tabs{position:fixed;left:0;right:0;bottom:0;z-index:10;background:var(--bar-bg);-webkit-backdrop-filter:saturate(180%) blur(20px);backdrop-filter:saturate(180%) blur(20px);border-top:.5px solid var(--line);padding:6px 8px calc(6px + env(safe-area-inset-bottom,0px))}
@@ -546,14 +570,13 @@ nav.tabs button.rec:active span{transform:scale(.94)}
 <div class="wrap">
   <header class="top">
     <div class="top-row">
+      <button class="hdr-av" id="hdr-av" data-act="profile" aria-label="My profile"></button>
       <div class="who">
         <h1 id="title">Jiu-jitsu</h1>
         <div class="belt" id="belt" role="img" aria-label="Belt"></div>
         <div class="sync" id="sync"><span class="dot"></span><span id="sync-t">Loading…</span></div>
       </div>
-      <div class="hdr-btns">
-        <button class="icon-btn" data-act="settings">Settings</button>
-      </div>
+      <button class="hdr-menu" data-act="menu" aria-label="Menu"><svg viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button>
     </div>
   </header>
   <main id="main"></main>
