@@ -246,3 +246,21 @@ Object.assign(window.BJJ_LANG.mn.dict, {
 window.BJJ_LANG.mn.rules.unshift([/^Valid until (.*)$/,"$1 хүртэл хүчинтэй"],[/^Expired on (.*)$/,"$1-нд хугацаа дууссан"]);
 
 Object.assign(window.BJJ_LANG.mn.dict,{"Public feed: your club. Friends: accepted friends.":"Нийтийн feed: клубийн гишүүд. Найзууд: зөвшөөрсөн найзууд."});
+
+/* Arrow training and unified timeline. */
+Object.assign(window.BJJ_LANG.mn.dict, {
+ 'Training type':'Бэлтгэлийн төрөл', 'Training date':'Бэлтгэлийн өдөр',
+ 'Duration (min)':'Хугацаа (мин)', 'Sparring rounds':'Барилдааны round',
+ 'minutes on the mat':'минут бэлтгэл хийсэн', 'Effort':'Ачаалал',
+ 'Easy':'Хөнгөн', 'Steady':'Тогтуун', 'Moderate':'Дунд', 'Hard':'Хүнд', 'All out':'Маш хүнд',
+ 'Details':'Дэлгэрэнгүй', 'Who can see this?':'Хэн харах вэ?',
+ 'Public':'Нийтэд', 'Your club':'Клубийн гишүүд', 'Accepted friends':'Найзууд',
+ 'Private training log':'Зөвхөн өөрийн тэмдэглэл', 'Public · club':'Нийтэд · клуб',
+ 'Posted':'Нийтэлсэн', 'Training feed':'Бэлтгэлүүд',
+ 'People you may know':'Танил байж болох хүмүүс', 'More':'Бүгдийг харах',
+ 'Discover':'Хүмүүс хайх', 'Search people':'Хүн хайх', 'Request sent':'Хүсэлт илгээсэн',
+ 'No people found.':'Хүн олдсонгүй.', 'Discover your club members':'Клубийн гишүүдтэй танилцаарай',
+ 'Join a club to see your teammates’ training.':'Клубт нэгдээд бусдын бэлтгэлийг хараарай.',
+ 'More training':'Бусад бэлтгэлийг харах', 'Try again':'Дахин оролдох',
+ 'You’re all caught up':'Бүх бэлтгэлийг үзлээ', 'Decrease':'Багасгах', 'Increase':'Нэмэх'
+});

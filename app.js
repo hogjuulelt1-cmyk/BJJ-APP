@@ -385,7 +385,7 @@ function picker(key, label, source, opt) {
 }
 function pickedHtml(key, counts) {
   const list = UI.sheet.pk[key] || [];
-  return list.map((x, i) => '<span class="chip on">' + esc(x.n) + (counts ? ' <button type="button" class="x" style="min-height:28px;min-width:28px;padding:0 6px" data-act="pk-dec" data-pk="' + key + '" data-i="' + i + '" aria-label="Remove">−</button><b>' + (key === "oc" ? (x.c >= 2 ? "rare" : "common") : (x.c || 1)) + '</b><button type="button" class="x" style="min-height:28px;min-width:28px;padding:0 6px" data-act="pk-inc" data-pk="' + key + '" data-i="' + i + '" aria-label="Add">+</button>' : "") + '<button type="button" class="x" style="min-height:28px;min-width:28px;padding:0 6px" data-act="pk-rm" data-pk="' + key + '" data-i="' + i + '" aria-label="Delete">×</button></span>').join("") || '<span class="muted small">None selected</span>';
+  return list.map((x, i) => '<span class="chip on">' + esc(x.n || 'Unspecified') + (counts ? ' <button type="button" class="x" style="min-height:28px;min-width:28px;padding:0 6px" data-act="pk-dec" data-pk="' + key + '" data-i="' + i + '" aria-label="Remove">−</button><b>' + (key === "oc" ? (x.c >= 2 ? "rare" : "common") : (x.c || 1)) + '</b><button type="button" class="x" style="min-height:28px;min-width:28px;padding:0 6px" data-act="pk-inc" data-pk="' + key + '" data-i="' + i + '" aria-label="Add">+</button>' : "") + '<button type="button" class="x" style="min-height:28px;min-width:28px;padding:0 6px" data-act="pk-rm" data-pk="' + key + '" data-i="' + i + '" aria-label="Delete">×</button></span>').join("") || '<span class="muted small">None selected</span>';
 }
 function pkSource(src) {
   if (src === "mv") return nodes().filter((n) => n.k === "mv").map((n) => ({ id: n.id, n: n.n, sub: (posOf(n.id) || {}).n || "" }));
@@ -1158,10 +1158,9 @@ function sessSheet(id, prefill) {
   /* prefill: a session-shaped object (from the live tracker, `live: true`) that fills a new session's form. */
   const s = id ? S.log.items.find((x) => x.id === id) : null; const f = s || prefill || {}; const fromLive = !s && !!(prefill && prefill.live);
   const body = () => {
-  let b = '<div class="session-intro"><span class="eyebrow">JIU-JITSU · ARROW</span><h3>Make every round count.</h3></div><div class="grid2">' + field("f-d", "Date", inp("f-d", f.d || todayIso(), "date", 'max="' + todayIso() + '"')) + field("f-min", "Minutes", inp("f-min", f.min || 60, "number", 'inputmode="numeric" min="0" step="5"')) + "</div>";
-  b += '<div class="field"><span class="lbl">Type</span>' + chips("type", STYPES, f.type || "gi") + "</div>";
-  b += '<div class="grid2">' + field("f-rolls", "Rounds (sparring)", inp("f-rolls", f.rolls != null ? f.rolls : "", "number", 'inputmode="numeric" min="0"')) + '<div class="field"><span class="lbl">How hard was it (1–5)</span>' + scale("rpe", f.rpe ? +f.rpe : 0, 1, 5) + "</div></div>";
-  b += '<div class="session-totals"><span><b>' + A.count(f.subs) + '</b>Submissions</span><span><b>' + A.count(f.taps) + '</b>Taps</span><span><b>' + A.count(f.tech) + '</b>Techniques</span></div><details class="edit-details"><summary>Techniques, partners and notes</summary>';
+  let b = '<div class="finish-overview"><div><b id="finish-minutes">' + esc(f.min || 60) + '</b><span>minutes on the mat</span></div><div><b id="finish-rounds">' + (+f.rolls || 0) + '</b><span>rounds</span></div></div><section class="training-section"><div class="grid2">' + field("f-d", "Training date", inp("f-d", f.d || todayIso(), "date", 'max="' + todayIso() + '"')) + sessionNumber('f-min','Duration (min)',f.min || 60,5) + '</div><span class="lbl">Training type</span>' + trainingChoices(f.type || 'gi') + '</section>';
+  b += '<section class="training-section">' + sessionNumber('f-rolls','Sparring rounds',f.rolls != null ? f.rolls : 0,1) + '<span class="lbl">Effort</span>' + effortChoices(f.rpe ? +f.rpe : 0) + '</section>';
+  b += '<section class="training-section"><div class="finish-counts">' + [['subs','Submissions'],['taps','Taps'],['tech','Techniques']].map(([key,label]) => sessionCounter(key,label)).join('') + '</div></section><details class="edit-details"><summary>Techniques, partners and notes</summary>';
   if (CLUB.id && CLUB.members) { const me = myUid(); const ms = (CLUB.members.list || []).filter((m) => attKey(m) !== me).sort((a, b) => String(a.n || "").localeCompare(String(b.n || ""))); const sel = (UI.sheet && UI.sheet.with) || f.with || []; if (ms.length) b += '<div class="field"><span class="lbl">Rolled with</span><div class="chips">' + ms.map((m) => '<button type="button" class="chip' + (sel.includes(attKey(m)) ? " on" : "") + '" data-act="with-toggle" data-who="' + attKey(m) + '">' + esc(m.n || m.email || "Member") + "</button>").join("") + "</div></div>"; }
   b += picker("tech", "Techniques drilled", "mv", { ph: "Search techniques…" });
   b += picker("subs", "I finished", "sub", { ph: "Add a submission…", counts: true });
@@ -1169,19 +1168,19 @@ function sessSheet(id, prefill) {
   b += field("f-good", "What went well", ta("f-good", f.good || "", ""));
   b += field("f-bad", "What did not work, what to fix", ta("f-bad", f.bad || "", ""));
   b += field("f-note", "Notes", ta("f-note", f.note || "", ""));
-  b += "</details>" + (socialOn() ? '<div class="audience-panel"><span class="lbl">Post visibility</span>' + chips("audience", [["public","Public feed"],["friends","Friends only"],["private","Only me"]], f.audience || "public") + '<p class="muted small">Public feed: your club. Friends: accepted friends.</p></div>' : "");
+  b += "</details>" + (socialOn() ? '<section class="training-section audience-panel"><span class="lbl">Who can see this?</span>' + audienceChoices(f.audience || 'public') + '</section>' : "");
   return b; };
   openSheet(s ? "Edit training" : fromLive ? "Finish training" : "Log training", body, {
     saveLabel: "Save session", state: { picks: { type: f.type || "gi", rpe: f.rpe ? +f.rpe : 0, audience: f.audience || "public" }, with: clone(f.with || []), pk: { tech: clone(f.tech || []), subs: clone(f.subs || []), taps: clone(f.taps || []) } },
     onSave() {
       const d = sv("f-d"); if (!d || d > todayIso()) { toast("Check the date"); return false; }
-      const min = +sv("f-min"); if (!min) { $("f-min").focus(); return false; }
+      const min = +sv("f-min"); if (!Number.isFinite(min) || min <= 0 || min > 1440) { $("f-min").focus(); return false; }
       const rec = s || { id: uid() }; const old = s ? s.d : "";
-      rec.d = d; rec.min = min; rec.type = pickVal("type", "gi"); rec.rolls = +sv("f-rolls") || 0; rec.rpe = pickVal("rpe", 0);
+      rec.d = d; rec.min = min; rec.type = pickVal("type", "gi"); rec.rolls = Math.min(999,Math.max(0,Math.round(+sv("f-rolls") || 0))); rec.rpe = pickVal("rpe", 0);
       rec.tech = UI.sheet.pk.tech || []; rec.subs = UI.sheet.pk.subs || []; rec.taps = UI.sheet.pk.taps || [];
       rec.audience = socialOn() ? pickVal("audience", "public") : "private";
       rec.good = sv("f-good").trim(); rec.bad = sv("f-bad").trim(); rec.note = sv("f-note").trim(); rec.with = (UI.sheet.with || []).slice();
-      if (!s) S.log.items.push(rec); save("log"); if (fromLive) liveClear(); if (CLUB.id) { attMark(rec.d, true).then(() => { if (UI.tab === "club") render(); }); rollsShare(rec); feedPost(rec).catch(()=>toast("Could not publish the session")); } toast("Training saved"); render(); setTimeout(() => shareSheet(rec.id, fromLive ? "story" : null), 450); return true;
+      if (!s) S.log.items.push(rec); save("log"); if (fromLive) liveClear(); if (CLUB.id) { attMark(rec.d, true).then(() => { if (UI.tab === "club") render(); }); rollsShare(rec); feedPost(rec,old).catch(()=>toast("Could not publish the session")); } toast("Training saved"); render(); setTimeout(() => shareSheet(rec.id, fromLive ? "story" : null), 450); return true;
     },
     onDelete: s ? () => { S.log.items = S.log.items.filter((x) => x.id !== s.id); save("log"); feedRemove(s.id, s.d); toast("Deleted"); render(); return true; } : null,
   });
@@ -1633,8 +1632,15 @@ function feedPostOf(rec) {
   const roll = S.rolls.items.filter((r) => r.d === rec.d).sort((a, b) => (a.id < b.id ? 1 : -1))[0];
   return { id: rec.id, uid: myUid(), n: "@" + myHandle(), av: S.settings.avatar || "", belt: S.belt.belt, d: rec.d, type: rec.type, min: +rec.min || 0, rounds: +rec.rolls || 0, tech: (rec.tech || []).slice(0, 5).map((t) => t.n || t), subs: A.count(rec.subs), good: rec.good || "", with: [], weeks: streaks().weeks, path: roll ? roll.steps.filter((x) => x.k !== "fin" && x.id !== "finish").map((x) => x.n).slice(0, 8) : [], kudos: [], t: Date.now() };
 }
-function feedMerged() { const out = []; for (const ym in CLUB.feedDocs || {}) out.push(...(CLUB.feedDocs[ym].list || [])); return out.sort((a, b) => (a.d < b.d ? 1 : a.d > b.d ? -1 : (b.t || 0) - (a.t || 0))); }
-function feedCache(ym, doc) { CLUB.feedDocs = CLUB.feedDocs || {}; CLUB.feedDocs[ym] = doc; CLUB.feed = feedMerged(); }
+const FEED = { club: null, raw: new Map(), cursor: null, done: false, busy: false, ready: false, error: false, generation: 0, observer: null };
+function feedReset(club) { if (FEED.observer) FEED.observer.disconnect(); Object.assign(FEED, { club, raw: new Map(), cursor: null, done: false, busy: false, ready: false, error: false, generation: FEED.generation + 1 }); CLUB.feed = []; }
+function feedMerged() { return [...FEED.raw.values()].sort(window.ARROW_FEED.compare); }
+function feedCache(ym, doc) {
+  CLUB.feedDocs = CLUB.feedDocs || {}; CLUB.feedDocs[ym] = doc;
+  const posts = new Map((doc.list || []).map(p => [p.id, p]));
+  for (const [id, post] of FEED.raw) if (String(post.d).slice(0, 7) === ym) { if (posts.has(id)) FEED.raw.set(id, posts.get(id)); else FEED.raw.delete(id); }
+  CLUB.feed = (CLUB.feed || []).filter(p => FEED.raw.has(p.id)).map(p => Object.assign({}, p, { kudos: (FEED.raw.get(p.id).kudos || []) }));
+}
 async function feedPost(rec) {
   if (!CLUB.id) return; const ym = rec.d.slice(0, 7); const doc = (await cget("club/" + CLUB.id + "/feed/" + ym)) || { list: [] };
   const old = doc.list.find((x) => x.id === rec.id); const p = feedPostOf(rec); if (old) { p.kudos = old.kudos || []; p.t = old.t || p.t; }
@@ -1643,7 +1649,7 @@ async function feedPost(rec) {
 }
 async function feedRemove(id, d) {
   if (!CLUB.id || !d) return; const ym = d.slice(0, 7); const doc = await cget("club/" + CLUB.id + "/feed/" + ym); if (!doc) return;
-  doc.list = (doc.list || []).filter((x) => x.id !== id); await cset("club/" + CLUB.id + "/feed/" + ym, doc); feedCache(ym, doc);
+  doc.list = (doc.list || []).filter((x) => x.id !== id); await cset("club/" + CLUB.id + "/feed/" + ym, doc); feedCache(ym, doc); await decryptFeed(); if(UI.tab === "home")render();
 }
 async function feedKudos(id, d) {
   if (!CLUB.id) { toast("Join a club to give Oss"); return; } const ym = d.slice(0, 7); const doc = (await cget("club/" + CLUB.id + "/feed/" + ym)) || { list: [] }; const p = doc.list.find((x) => x.id === id); if (!p) return;
@@ -1679,8 +1685,10 @@ function liveCard() {
 function liveRender() { const c = document.querySelector(".card.live"); if (c && liveOn()) c.outerHTML = liveCard(); else render(); }
 function liveStartSheet() {
   if (liveOn()) { render(); return; }
-  const b = '<p class="small">Pick the type. The clock starts now; count rounds, submissions and taps as you go, then tap Finish to save and share.</p><div class="field"><span class="lbl">Type</span>' + chips("type", STYPES, "gi") + "</div>";
-  openSheet("Start training", b, { state: { picks: { type: "gi" } }, saveLabel: "Start", onSave() { S.settings.live = { t0: Date.now(), type: pickVal("type", "gi"), rolls: 0, subs: [], taps: [], tech: [], good: "", with: [] }; save("settings"); toast("Training started"); render(); return true; } });
+  const b = '<div class="training-type-field"><span class="lbl">Training type</span>' + trainingChoices("gi") + '</div>';
+  openSheet("Start training", b, { state: { picks: { type: "gi" } }, saveLabel: "Start training", onSave() { S.settings.live = { t0: Date.now(), type: pickVal("type", "gi"), rolls: 0, subs: [], taps: [], tech: [], good: "", with: [] }; save("settings"); render(); return true; } });
+  $('sheet').classList.add('modern-sheet','training-sheet','start-sheet');
+
 }
 function liveStep(key, d) { const l = liveOn(); if (!l) return; if (key === "rolls") l.rolls = Math.max(0, (+l.rolls || 0) + d); else if (d < 0) (l[key] = l[key] || []).pop(); if (navigator.vibrate && d > 0) navigator.vibrate(10); save("settings"); liveRender(); }
 function liveAdd(key, n) { const l = liveOn(); n = String(n || "").trim(); if (!l || !n) return; (l[key] = l[key] || []).push(n); if (navigator.vibrate) navigator.vibrate(10); save("settings"); if (UI.sheet) closeSheet(); liveRender(); }
@@ -1709,8 +1717,8 @@ function liveFinish() {
 const FEED_TITLE = { gi: "Gi training", nogi: "No-gi training", open: "Open mat", priv: "Private lesson", drill: "Drilling session", comp: "Competition day" };
 function feedCard(p) {
   const me = myUid(); const ks = p.kudos || []; const mine = ks.includes(me); const tn = FEED_TITLE[p.type] || "Training";
-  let h = '<article class="card feed"><div class="prow">' + avatarHtml(p.n, p.av || memAv(p.uid), "sm", 'data-act="member-profile" data-uid="' + esc(p.uid || "") + '" aria-label="Open profile"') + '<div class="pinfo"><b>' + esc(p.n || "Member") + '</b><p class="muted small">' + fmtLong(p.d) + (CLUB.profile ? " · " + esc(CLUB.profile.n) : "") + "</p></div>" + (p.weeks > 1 ? '<span class="streak" title="Week streak">🔥 ' + p.weeks + "</span>" : "") + "</div>";
-  h += "<h3>" + esc(tn) + "</h3>" + (p.good ? '<p class="small">' + esc(p.good) + "</p>" : "");
+  let h = '<article class="card feed" data-post-id="' + esc(p.id) + '"><div class="prow">' + avatarHtml(p.n, p.av || memAv(p.uid), "sm", 'data-act="member-profile" data-uid="' + esc(p.uid || "") + '" aria-label="Open profile"') + '<div class="pinfo"><b>' + esc(p.n || "Member") + '</b><p class="muted small">' + postTime(p) + "</p></div>" + (p.weeks > 1 ? '<span class="streak" title="Week streak">🔥 ' + p.weeks + "</span>" : "") + "</div>";
+  h += '<div class="post-title"><h3>' + esc(tn) + "</h3>" + postAudience(p) + "</div>" + (p.good ? '<p class="small">' + esc(p.good) + "</p>" : "");
   h += '<div class="summary"><div class="stat"><b>' + (+p.min || 0) + '</b><span>minutes</span></div><div class="stat"><b>' + (+p.rounds || 0) + '</b><span>rounds</span></div><div class="stat"><b>' + ((p.tech && p.tech.length) || 0) + "</b><span>techniques</span></div></div>";
   if (p.path && p.path.length) h += '<div class="fpath">' + p.path.map((n) => "<span>" + esc(n) + "</span>").join("<i>›</i>") + "</div>";
   if (p.with && p.with.length) h += '<p class="muted small">Rolled with · ' + p.with.map(esc).join(", ") + "</p>";
@@ -1800,7 +1808,7 @@ async function clubLoad() {
       CLUB.profile = await cget("club/" + id + "/profile");
       if (!CLUB.profile) { S.settings.clubId = ""; save("settings"); CLUB.id = null; CLUB.index = (await cget("clubs/index")) || { list: [] }; }
       else { CLUB.id = id; CLUB.members = (await cget("club/" + id + "/members")) || { list: [] }; CLUB.pay = {}; const rows = await clist("club/" + id + "/pay/"); for (const r of rows) CLUB.pay[r.path.split("/").pop()] = r.data;
-        CLUB.attMonth = (await cget("club/" + id + "/att/" + thisMonth())) || { days: {} }; CLUB.rolls = (await cget("club/" + id + "/rolls/" + thisMonth())) || { list: [] }; CLUB.att = { ym: thisMonth(), doc: CLUB.attMonth }; CLUB.results = (await cget("club/" + id + "/results")) || { list: [] }; CLUB.notes = (await cget("club/" + id + "/notes")) || { list: [] }; CLUB.events = (await cget("club/" + id + "/events")) || { list: [] }; CLUB.feedDocs = {}; const pm = addDays(thisMonth() + "-01", -1).slice(0, 7); for (const ym of (socialOn() ? [pm, thisMonth()] : [])) CLUB.feedDocs[ym] = (await cget("club/" + id + "/feed/" + ym)) || { list: [] }; CLUB.feed = feedMerged(); }
+        CLUB.attMonth = (await cget("club/" + id + "/att/" + thisMonth())) || { days: {} }; CLUB.rolls = (await cget("club/" + id + "/rolls/" + thisMonth())) || { list: [] }; CLUB.att = { ym: thisMonth(), doc: CLUB.attMonth }; CLUB.results = (await cget("club/" + id + "/results")) || { list: [] }; CLUB.notes = (await cget("club/" + id + "/notes")) || { list: [] }; CLUB.events = (await cget("club/" + id + "/events")) || { list: [] }; CLUB.feedDocs = CLUB.feedDocs || {}; }
     }
   } catch (e) { CLUB.err = "Could not load the club"; console.warn(e); }
   CLUB.busy = false; CLUB.loadedFor = S.settings.clubId || "-"; if (UI.tab === "club" || UI.tab === "home" || UI.tab === "me") render();
@@ -2145,7 +2153,7 @@ document.addEventListener("click", async (e) => {
   if (act === "sheet-close") { closeSheet(); return; }
   if (act === "sheet-save") { await finishSheetSave(el); return; }
   if (act === "sheet-del") { if (armConfirmSheet(el) && UI.sheetDel) { const sheet = UI.sheet; try { if (await UI.sheetDel() !== false && UI.sheet === sheet) closeSheet(); } catch (err) { toast("Could not save: " + err.message); } } return; }
-  if (act === "pick") { if (UI.sheet) UI.sheet.picks[ds.group] = ds.group === "rpe" || ds.group === "stripes" ? +ds.v : ds.v; const g = (el.parentElement || el).closest("[data-group]"); if (g) g.querySelectorAll("[data-act=pick]").forEach((b) => b.classList.toggle("on", b === el)); if (ds.group === "theme") { S.settings.theme = ds.v; applyTheme(); save("settings"); } if (ds.group === "tpl") { SHARE.tpl = ds.v; drawShare(); } if (ds.group === "fmt") { SHARE.fmt = ds.v; const cv = $("sh-cv"); if (cv) { const sz = shareSize(); cv.width = sz[0]; cv.height = sz[1]; } drawShare(); } if (ds.group === "lang") { S.settings.lang = ds.v; save("settings"); I18N.set(ds.v); closeSheet(); render(); } if (ds.group === "rules") { S.settings.rules = ds.v; save("settings"); } if (ds.group === "beltf") { S.settings.beltFilter = ds.v === "1"; save("settings"); } if (ds.group === "medal" && UI.comp.id) { const ev = S.comp.events.find((x) => x.id === UI.comp.id); if (ev) { ev.medal = ds.v; save("comp"); if (CLUB.id) resultSubmit(ev).then(() => { toast(ds.v ? "Sent to your coach to approve" : "Result cleared"); render(); }); } } if (ds.group === "track" && UI.sheet) { const sel = $("f-belt"); if (sel) sel.innerHTML = SEED.belts[ds.v].map((x) => '<option value="' + x.id + '">' + esc(x.n) + "</option>").join(""); } return; }
+  if (act === "pick") { if (UI.sheet) UI.sheet.picks[ds.group] = ds.group === "rpe" || ds.group === "stripes" ? +ds.v : ds.v; const g = (el.parentElement || el).closest("[data-group]"); if (g) g.querySelectorAll("[data-act=pick]").forEach((b) => (b.classList.toggle("on", b === el), b.getAttribute("role") === "radio" ? b.setAttribute("aria-checked",String(b === el)) : b.setAttribute("aria-pressed",String(b === el)))); if (ds.group === "theme") { S.settings.theme = ds.v; applyTheme(); save("settings"); } if (ds.group === "tpl") { SHARE.tpl = ds.v; drawShare(); } if (ds.group === "fmt") { SHARE.fmt = ds.v; const cv = $("sh-cv"); if (cv) { const sz = shareSize(); cv.width = sz[0]; cv.height = sz[1]; } drawShare(); } if (ds.group === "lang") { S.settings.lang = ds.v; save("settings"); I18N.set(ds.v); closeSheet(); render(); } if (ds.group === "rules") { S.settings.rules = ds.v; save("settings"); } if (ds.group === "beltf") { S.settings.beltFilter = ds.v === "1"; save("settings"); } if (ds.group === "medal" && UI.comp.id) { const ev = S.comp.events.find((x) => x.id === UI.comp.id); if (ev) { ev.medal = ds.v; save("comp"); if (CLUB.id) resultSubmit(ev).then(() => { toast(ds.v ? "Sent to your coach to approve" : "Result cleared"); render(); }); } } if (ds.group === "track" && UI.sheet) { const sel = $("f-belt"); if (sel) sel.innerHTML = SEED.belts[ds.v].map((x) => '<option value="' + x.id + '">' + esc(x.n) + "</option>").join(""); } return; }
   if (act === "pk-add") { pkAdd(ds.pk, ds.id, ds.n); return; }
   if (act === "pk-inc") { pkChange(ds.pk, +ds.i, 1); return; }
   if (act === "pk-dec") { pkChange(ds.pk, +ds.i, -1); return; }
@@ -2376,6 +2384,7 @@ clubUpdateMe = async function () {
 };
 const clubLoadBase = clubLoad;
 clubLoad = async function () {
+  if (FEED.club !== (S.settings.clubId || null)) feedReset(S.settings.clubId || null);
   await clubLoadBase();
   if (!CLUB.id || CLUB.err) return;
   try {
@@ -2383,7 +2392,7 @@ clubLoad = async function () {
     if (myAge() !== null) await clubUpdateMe();
     await readCoachAges(); await readPrivateProfiles();
     CLUB.friends = socialOn() ? (await cget('club/' + CLUB.id + '/friends')) || { list: [] } : { list: [] };
-    await decryptFeed(); checkNotices(); render();
+    await decryptFeed(); FEED.ready = true; checkNotices(); render();
   } catch (e) { toast('Could not update your club profile'); console.warn(e); }
 };
 profileEditSheet = function () {
@@ -2422,14 +2431,15 @@ const feedCardBase = feedCard;
 feedCard = function (p) { const m = ((CLUB.members || {}).list || []).find((m) => m.uid === p.uid); return feedCardBase(Object.assign({}, p, { n: p.uid === myUid() ? '@' + myHandle() : socialName(m), with: [] })); };
 const leadRowsBase = leadRows;
 leadRows = function () { if (!socialOn()) return []; const old = CLUB.feed; CLUB.feed = eligiblePosts(); const rows = leadRowsBase(); CLUB.feed = old; return rows.map((r) => Object.assign(r, { n: r.uid === myUid() ? '@' + myHandle() : socialName((CLUB.members.list || []).find((m) => m.uid === r.uid)) })); };
-const homeBase = VIEWS.home;
 VIEWS.home = function () {
-  if (!socialOn()) return weekCard() + liveCard() + '<div class="card"><h3>My training</h3><p class="muted small">Your training stays private.</p></div>';
-  if (UI.homeSeg === 'friends') return weekCard() + liveCard() + homeSegments() + friendsView();
-  const old = CLUB.feed; const posts = eligiblePosts(); CLUB.feed = UI.homeSeg === 'friendfeed' ? posts.filter(p=>p.uid===myUid() || acceptedFriends().includes(p.uid)) : posts.filter(p=>!p.audience || p.audience==='public'); const previous = UI.homeSeg; if (previous==='friendfeed') UI.homeSeg='feed'; let h = homeBase(); UI.homeSeg=previous; CLUB.feed = old;
-  return h.replace(seg([['feed', 'Feed'], ['lead', 'Leaderboard']], previous==='friendfeed'?'feed':UI.homeSeg, 'homeseg'), homeSegments());
+  let h = liveOn() ? liveCard() + weekCard() : weekCard() + liveCard();
+  if (!socialOn()) return h + '<div class="card"><h3>My training</h3><p class="muted small">Your training stays private.</p></div>';
+  if (clubNeeds()) return h;
+  if (!CLUB.id) return h + '<div class="card"><p class="empty">Join a club to see your teammates’ training.</p><button class="btn wide" data-act="tab" data-v="club">Find my club</button></div>';
+  if (!FEED.ready) return h;
+  return h + suggestedFriends() + '<div class="feed-heading"><h3>Training feed</h3></div><section id="feed-list" aria-label="Training feed">' + unifiedPosts().map(feedCard).join('') + '</section><div id="feed-tail"></div>';
 };
-function homeSegments() { return seg([['feed', 'Public feed'], ['friendfeed', 'Friends feed'], ['friends', 'Add friends']], UI.homeSeg, 'homeseg'); }
+function unifiedPosts() { const friends=new Set(acceptedFriends()); return eligiblePosts().filter(p => p.audience !== 'private' && (p.audience !== 'friends' || p.uid === myUid() || friends.has(p.uid))).sort(window.ARROW_FEED.compare); }
 function friendship(id) { return (((CLUB.friends || {}).list) || []).find((r) => (r.from === myUid() && r.to === id) || (r.to === myUid() && r.from === id)); }
 function friendButton(id) { const r = friendship(id); const act = r && r.status === 'accepted' ? 'remove' : r ? (r.to === myUid() ? 'accept' : 'cancel') : 'request'; return '<button class="btn ghost" data-act="arrow-friend" data-uid="' + esc(id) + '" data-v="' + act + '">' + ({remove:'Remove friend',accept:'Accept friend',cancel:'Cancel request',request:'Add friend'})[act] + '</button>'; }
 function friendsView() { if (!CLUB.id) return '<div class="card"><p>Join a club to add friends.</p></div>'; const members = (CLUB.members.list || []).filter((m) => m.uid && m.uid !== myUid() && m.socialAllowed === true); return '<div class="card"><h3>Friends</h3><div class="list">' + (members.length ? members.map((m) => { const r = friendship(m.uid); return '<div class="row">' + avatarHtml(socialName(m), m.av, 'sm') + '<div class="txt"><b>' + esc(socialName(m)) + '</b><small>' + (r ? r.status === 'accepted' ? 'Friends' : 'Friend request' : 'Club member') + '</small></div>' + friendButton(m.uid) + '</div>'; }).join('') : '<p class="empty">No members available yet.</p>') + '</div></div>'; }
@@ -2441,7 +2451,7 @@ async function friendAction(id, action) {
   if (action === 'accept') { if (!r || r.to !== myUid() || r.status !== 'pending') return; r.status = 'accepted'; }
   else if (action === 'remove' || action === 'cancel') doc.list = doc.list.filter((x) => x !== r);
   else if (!r) doc.list.push({ id: uid(), from: myUid(), to: id, status: 'pending', at: Date.now() });
-  await cset(path, doc); CLUB.friends = doc; if (UI.sheet) closeSheet(); render();
+  const discovering=$('sheet').classList.contains('discover-sheet'); await cset(path, doc); CLUB.friends = doc; if (UI.sheet) closeSheet(); render(); if(discovering)openDiscover();
 }
 function unreadNotices() { const seen = ((S.settings.noticeSeen || {})[CLUB.id]) || []; return ((CLUB.notes || {}).list || []).filter((n) => !seen.includes(n.id)); }
 function updateNoticeBadge() { const b = $('arrow-notices'); if (!b) return; const n = unreadNotices().length; b.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4"/></svg>' + (n ? '<span class="notice-count">' + n + '</span>' : ''); b.setAttribute('aria-label', 'Club notifications' + (n ? ': ' + n : '')); }
@@ -2489,18 +2499,19 @@ function coachPublicKeys() { const keys={}; for (const id of (CLUB.profile||{}).
 async function readPrivateProfiles() { CLUB.privateProfiles={}; if (!isAdmin()) return; const key=((S.settings.coachAgeKeys||{})[CLUB.id]||{}).privateKey; for (const m of CLUB.members.list||[]) { const value=await A.openPayload(m.privateProfile,myUid(),key); if(value) CLUB.privateProfiles[m.uid||m.id]=value; } }
 function acceptedFriends() { return (((CLUB.friends||{}).list)||[]).filter(r=>r.status==='accepted'&&(r.from===myUid()||r.to===myUid())).map(r=>r.from===myUid()?r.to:r.from); }
 async function decryptFeed() { const rows=[]; for(const post of feedMerged()) { if(!post.sealed){rows.push(post);continue;} const body=await A.openPayload(post.sealed,myUid(),(S.settings.socialKey||{}).privateKey); if(body) rows.push(Object.assign(body,{kudos:post.kudos||[]})); } CLUB.feed=rows; }
-feedPost = async function(rec) {
+feedPost = async function(rec, previousDate) {
   if(!socialOn()||!CLUB.id) return;
+  if (previousDate && previousDate.slice(0,7) !== rec.d.slice(0,7)) await feedRemove(rec.id,previousDate);
   const path='club/'+CLUB.id+'/feed/'+rec.d.slice(0,7), doc=await cget(path)||{list:[]}; const old=doc.list.find(p=>p.id===rec.id); doc.list=doc.list.filter(p=>p.id!==rec.id);
-  if(rec.audience==='private') { await cset(path,doc); feedCache(rec.d.slice(0,7),doc); await decryptFeed(); return; }
-  let post=feedPostOf(rec); post.audience=rec.audience||'public'; post.kudos=old&&old.kudos||[];
+  if(rec.audience==='private') { FEED.raw.delete(rec.id); await cset(path,doc); feedCache(rec.d.slice(0,7),doc); await decryptFeed(); if(UI.tab==='home')render(); return; }
+  let post=feedPostOf(rec); post.audience=rec.audience||'public'; post.kudos=old&&old.kudos||[]; post.t=old&&old.t||post.t;
   if(post.audience==='friends') {
     CLUB.friends=await cget('club/'+CLUB.id+'/friends')||{list:[]};
     const keys={}; keys[myUid()]=S.settings.socialKey.publicKey;
     const ids=new Set(acceptedFriends()); for(const m of CLUB.members.list) if(ids.has(m.uid)&&m.socialAllowed&&m.socialPublicKey) keys[m.uid]=m.socialPublicKey;
     post={id:post.id,uid:post.uid,d:post.d,t:post.t,audience:'friends',kudos:post.kudos,sealed:await A.sealPayload(post,keys)};
   }
-  doc.list.push(post); doc.list=doc.list.slice(-400); await cset(path,doc); feedCache(rec.d.slice(0,7),doc); await decryptFeed(); if(UI.tab==='home')render();
+  doc.list.push(post); doc.list=doc.list.slice(-400); await cset(path,doc); FEED.raw.set(post.id,post); feedCache(rec.d.slice(0,7),doc); await decryptFeed(); if(UI.tab==='home')render();
 };
 const ossSave=feedKudos;
 feedKudos=async function(id,d){await ossSave(id,d);await decryptFeed();render();};
@@ -2509,7 +2520,7 @@ VIEWS.belt=function(){ let h=beltView(); if(!isAdmin()) h=h.replace(/<div class=
 const profileSheetEdit=profileEditSheet;
 profileEditSheet=function(){profileSheetEdit();$('sheet').classList.add('modern-sheet');$('sheet-body').querySelector('h2').insertAdjacentHTML('afterend','<p class="muted small">Your identity on and off the mat.</p>');};
 const closeOld=closeSheet;
-closeSheet=function(){closeOld();$('sheet').classList.remove('modern-sheet','share-sheet','training-sheet');};
+closeSheet=function(){closeOld();$('sheet').classList.remove('modern-sheet','share-sheet','training-sheet','start-sheet','discover-sheet');};
 const sessionEdit=sessSheet;
 sessSheet=function(id,prefill){sessionEdit(id,prefill);$('sheet').classList.add('modern-sheet','training-sheet');};
 const memberEdit=memberSheet;
@@ -2539,6 +2550,123 @@ document.addEventListener('click',e=>{const b=e.target.closest('[data-act="arrow
 planRows=function(){const el=$('c-plans');if(!el||!UI.sheet)return;const ps=UI.sheet.plans||[];el.innerHTML=ps.map((p,i)=>'<section class="plan-editor"><div class="grid2">'+field('c-plan-n-'+i,'Plan name',inp('c-plan-n-'+i,p.n||'','text'))+field('c-plan-g-'+i,'Age group','<select id="c-plan-g-'+i+'">'+[['adult','Adults'],['kids','Kids'],['all','All ages']].map(([k,n])=>'<option value="'+k+'"'+((p.group||'adult')===k?' selected':'')+'>'+n+'</option>').join('')+'</select>')+'</div><div class="grid2">'+field('c-plan-m-'+i,'Months',inp('c-plan-m-'+i,p.months==null?1:p.months,'number','min="0" max="24"'))+field('c-plan-p-'+i,'Price (₮)',inp('c-plan-p-'+i,p.price||'','number','min="1"'))+'</div><button class="btn ghost" data-act="plan-rm" data-i="'+i+'">Remove plan</button></section>').join('')+'<button class="btn ghost wide" data-act="plan-add">+ Add option</button>';};
 const planReadOld=planRead;
 planRead=function(){return planReadOld().map((p,i)=>Object.assign(p,{group:sv('c-plan-g-'+i)||'adult'}));};
+
+/* Training choices, discovery and one progressively fetched social timeline. */
+const TRAINING_ICONS = {
+ gi: '<path d="m8 3 4 3 4-3 5 5-3 3-2-2v12H8V9l-2 2-3-3zM8 15h8M9 4l6 10M15 4l-3 6"/>',
+ nogi: '<path d="M8 3h8l5 4-3 4-2-2v12H8V9l-2 2-3-4zM9 3c0 4 6 4 6 0"/>',
+ open: '<path d="M3 6h18v15H3zM3 11h18M8 3v6M16 3v6M8 16h8M12 13v6"/>',
+ priv: '<circle cx="8" cy="6" r="3"/><circle cx="17" cy="8" r="2"/><path d="M2 21v-4a6 6 0 0 1 12 0v4M14 13a5 5 0 0 1 8 4v4"/>',
+ drill: '<path d="M5 7a8 8 0 0 1 14 1M19 3v5h-5M19 17a8 8 0 0 1-14-1M5 21v-5h5"/>',
+ comp: '<path d="M7 3h10v5a5 5 0 0 1-10 0zM7 5H3v3a4 4 0 0 0 5 4M17 5h4v3a4 4 0 0 1-5 4M12 13v7M7 21h10"/>'
+};
+const AUDIENCE_ICONS = {
+ public: '<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c6 6 6 12 0 18-6-6-6-12 0-18z"/>',
+ friends: '<circle cx="8" cy="7" r="3"/><circle cx="17" cy="9" r="2"/><path d="M2 21v-3a6 6 0 0 1 12 0v3M15 14a5 5 0 0 1 7 5v2"/>',
+ private: '<rect x="5" y="10" width="14" height="11" rx="3"/><path d="M8 10V7a4 4 0 0 1 8 0v3M12 14v3"/>'
+};
+function optionIcon(paths) { return '<svg viewBox="0 0 24 24" aria-hidden="true">' + paths + '</svg>'; }
+function trainingChoices(current) {
+ return '<div class="training-options" data-group="type" role="radiogroup" aria-label="Training type">' + STYPES.map(([key,name]) => '<button type="button" class="training-option' + (current===key?' on':'') + '" role="radio" aria-checked="' + (current===key) + '" data-act="pick" data-group="type" data-v="' + key + '">' + optionIcon(TRAINING_ICONS[key]) + '<span>' + esc(name) + '</span><i aria-hidden="true">✓</i></button>').join('') + '</div>';
+}
+function effortChoices(current) {
+ return '<div class="effort-options" data-group="rpe" role="radiogroup" aria-label="Effort">' + ['Easy','Steady','Moderate','Hard','All out'].map((name,i)=>'<button type="button" class="effort-option' + (current===i+1?' on':'') + '" role="radio" aria-checked="' + (current===i+1) + '" data-act="pick" data-group="rpe" data-v="' + (i+1) + '"><b>' + (i+1) + '</b><span>' + name + '</span></button>').join('') + '</div>';
+}
+function audienceChoices(current) {
+ return '<div class="audience-options" data-group="audience" role="radiogroup" aria-label="Who can see this?">' + [['public','Public','Your club'],['friends','Friends','Accepted friends'],['private','Only me','Private training log']].map(([key,label,hint])=>'<button type="button" class="audience-option' + (current===key?' on':'') + '" role="radio" aria-checked="' + (current===key) + '" data-act="pick" data-group="audience" data-v="' + key + '">' + optionIcon(AUDIENCE_ICONS[key]) + '<span><b>' + label + '</b><small>' + hint + '</small></span><i aria-hidden="true"></i></button>').join('') + '</div>';
+}
+function sessionNumber(id,label,value,step) {
+ return '<div class="field"><label for="' + id + '">' + label + '</label><div class="session-number"><button type="button" data-act="session-step" data-target="' + id + '" data-step="-' + step + '" aria-label="Decrease">−</button><input id="' + id + '" type="number" inputmode="numeric" min="' + (id==='f-min'?1:0) + '" max="' + (id==='f-min'?1440:999) + '" value="' + esc(value) + '"><button type="button" data-act="session-step" data-target="' + id + '" data-step="' + step + '" aria-label="Increase">+</button></div></div>';
+}
+function sessionCounter(key,label) {
+ const count=A.count(UI.sheet.pk[key]);
+ return '<div class="finish-counter"><span>' + label + '</span><div><button type="button" data-act="session-count" data-k="' + key + '" data-step="-1" aria-label="Decrease ' + label + '">−</button><b id="finish-count-' + key + '">' + count + '</b><button type="button" data-act="session-count" data-k="' + key + '" data-step="1" aria-label="Increase ' + label + '">+</button></div><button type="button" class="detail-link" data-act="session-detail" data-k="' + key + '">Details</button></div>';
+}
+function updateFinishStats() {
+ if (!UI.sheet || !document.querySelector('.training-sheet')) return;
+ for (const key of ['subs','taps','tech']) { const el=$('finish-count-'+key); if(el)el.textContent=A.count(UI.sheet.pk[key]); }
+ if($('finish-minutes'))$('finish-minutes').textContent=sv('f-min') || 0;
+ if($('finish-rounds'))$('finish-rounds').textContent=sv('f-rolls') || 0;
+}
+function postTime(p) {
+ const posted=new Date(+p.t);
+ if(!p.t || Number.isNaN(posted.getTime()))return '<span>' + tr('Training date') + ' ' + fmtLong(p.d) + '</span>';
+ const locale=I18N.lang==='mn'?'mn-MN':'en-GB';
+ return '<time class="post-time" datetime="' + posted.toISOString() + '" title="' + esc(posted.toLocaleString(locale)) + '">' + tr('Posted') + ' ' + posted.toLocaleDateString(locale,{month:'numeric',day:'numeric'}) + ' · ' + posted.toLocaleTimeString(locale,{hour:'2-digit',minute:'2-digit',hour12:false}) + '</time>';
+}
+function postAudience(p) {
+ const key=p.audience==='friends'?'friends':'public', label=key==='friends'?'Friends':'Public · club';
+ return '<span class="post-audience" role="img" title="' + label + '" aria-label="' + label + '">' + optionIcon(AUDIENCE_ICONS[key]) + '</span>';
+}
+function discoverMembers() { return ((CLUB.members||{}).list||[]).filter(m=>m.uid&&m.uid!==myUid()&&m.socialAllowed===true); }
+function suggestedFriends() {
+ const members=discoverMembers().filter(m=>{const r=friendship(m.uid);return !r || r.status==='pending'&&r.to===myUid();}).sort((a,b)=>Number(!!friendship(b.uid))-Number(!!friendship(a.uid))).slice(0,5);
+ return '<section class="card suggested"><div class="card-head"><h3>People you may know</h3><button type="button" class="text-button" data-act="discover">More</button></div>' + (members.length?'<div class="suggested-strip">' + members.map(m=>'<div class="suggestion"><button type="button" class="suggestion-profile" data-act="member-profile" data-uid="' + esc(m.uid) + '">' + avatarHtml(socialName(m),m.av,'sm') + '<b>' + esc(socialName(m)) + '</b></button>' + friendButton(m.uid) + '</div>').join('') + '</div>':'<p class="muted small">Discover your club members</p>') + '</section>';
+}
+function discoverRows(query) {
+ const q=String(query||'').trim().toLocaleLowerCase();
+ const members=discoverMembers().filter(m=>[m.username,m.n].some(v=>String(v||'').toLocaleLowerCase().includes(q))).sort((a,b)=>{const pending=m=>{const r=friendship(m.uid);return r&&r.status==='pending'&&r.to===myUid();};return Number(!!pending(b))-Number(!!pending(a));});
+ return members.length?members.map(m=>{const r=friendship(m.uid);return '<div class="row discover-row"><button type="button" class="discover-person" data-act="member-profile" data-uid="' + esc(m.uid) + '">' + avatarHtml(socialName(m),m.av,'sm') + '<span><b>' + esc(socialName(m)) + '</b><small>' + (r?(r.status==='accepted'?'Friends':r.to===myUid()?'Friend request':'Request sent'):'Club member') + '</small></span></button>' + friendButton(m.uid) + '</div>';}).join(''):'<p class="empty">No people found.</p>';
+}
+function openDiscover() {
+ if(!socialOn()||!CLUB.id)return;
+ openSheet('Discover','<div class="discover-search"><label for="discover-search" class="sr-only">Search people</label><input id="discover-search" type="search" placeholder="Search people" autocomplete="off"></div><div id="discover-people" class="list">' + discoverRows('') + '</div>',{});
+ $('sheet').classList.add('modern-sheet','discover-sheet');
+ $('sheet-body').querySelector('.foot').innerHTML='<button type="button" class="btn wide" data-act="sheet-close">Done</button>';
+}
+function localFeedPage(cursor) {
+ const paging=window.ARROW_FEED, all=clocal(), prefix='club/'+CLUB.id+'/feed/';
+ const months=Object.keys(all).filter(k=>k.startsWith(prefix)&&/^\d{4}-\d{2}$/.test(k.slice(prefix.length))).map(k=>k.slice(prefix.length)).filter(m=>!cursor||m<=cursor.month).sort().reverse();
+ const asOf=cursor?cursor.asOf:Date.now(), posts=[];let next=null;
+ for(let i=0;i<Math.min(months.length,3);i++){
+  const month=months[i], result=paging.page(all[prefix+month].list,cursor&&cursor.month===month?cursor.before:null,asOf,paging.size-posts.length);
+  posts.push(...result.posts);
+  if(result.more){next={month,before:result.before,asOf};break;}
+  next=i+1<months.length?{month:months[i+1],before:null,asOf}:null;
+  if(posts.length>=paging.size)break;
+ }
+ return {posts,next};
+}
+function paintFeed() {
+ const list=$('feed-list'),tail=$('feed-tail');if(!list||!tail)return;
+ const posts=unifiedPosts(), existing=new Map([...list.querySelectorAll('article[data-post-id]')].map(el=>[el.dataset.postId,el]));
+ for(const p of posts){let el=existing.get(p.id);if(!el){const tmp=document.createElement('div');tmp.innerHTML=feedCard(p);el=tmp.firstElementChild;}list.appendChild(el);existing.delete(p.id);}
+ existing.forEach(el=>el.remove());
+ let empty=list.querySelector('.feed-empty');if(empty)empty.remove();
+ if(!posts.length&&FEED.done)list.insertAdjacentHTML('beforeend','<div class="card feed-empty"><p class="empty">No training in the club yet. Log the first one!</p><button class="btn wide" data-act="add-sess">+ Log training</button></div>');
+ tail.innerHTML=FEED.error?'<button class="btn ghost wide" data-act="feed-more">Try again</button>':FEED.done?(posts.length?'<p class="feed-end">You’re all caught up</p>':''):'<button type="button" class="text-button feed-more" data-act="feed-more"'+(FEED.busy?' disabled':'')+'>More training</button>';
+}
+async function loadFeedPage() {
+ if(FEED.busy||FEED.done||!FEED.ready||!socialOn()||UI.tab!=='home'||!CLUB.id)return;
+ FEED.busy=true;FEED.error=false;const generation=FEED.generation,club=CLUB.id;
+ try{
+  let result;
+  if(mode==='local')result=localFeedPage(FEED.cursor);
+  else{const query=new URLSearchParams({club});if(FEED.cursor)query.set('cursor',JSON.stringify(FEED.cursor));const r=await fetch('/api/feed?'+query,{headers:{Authorization:'Bearer '+await SB.token()},cache:'no-store',signal:AbortSignal.timeout(20000)});if(!r.ok)throw new Error('Feed request failed');result=await r.json();}
+  if(generation!==FEED.generation||club!==CLUB.id)return;
+  for(const post of result.posts||[])if(post&&post.id)FEED.raw.set(post.id,post);
+  FEED.cursor=result.next;FEED.done=!result.next;await decryptFeed();
+ }catch(e){if(generation===FEED.generation)FEED.error=true;}
+ finally{if(generation===FEED.generation){FEED.busy=false;if(UI.tab==='home'){paintFeed();observeFeed();}}}
+}
+function observeFeed() {
+ if(FEED.observer)FEED.observer.disconnect();
+ const tail=$('feed-tail');if(!tail||FEED.done||FEED.error||!FEED.ready||UI.tab!=='home')return;
+ if(!FEED.raw.size&&!FEED.busy){loadFeedPage();return;}
+ if('IntersectionObserver' in window){FEED.observer=new IntersectionObserver(entries=>{if(entries.some(e=>e.isIntersecting))loadFeedPage();},{rootMargin:'0px 0px 220px 0px'});FEED.observer.observe(tail);}
+}
+const renderTimeline=render;
+render=function(anim){renderTimeline(anim);if(UI.tab==='home'&&$('feed-list')){paintFeed();observeFeed();}else if(FEED.observer)FEED.observer.disconnect();};
+document.addEventListener('input',e=>{if(e.target.id==='discover-search')$('discover-people').innerHTML=discoverRows(e.target.value);if(['f-min','f-rolls'].includes(e.target.id))updateFinishStats();});
+document.addEventListener('click',e=>{
+ const b=e.target.closest('[data-act]');if(!b)return;
+ if(b.dataset.act==='discover')openDiscover();
+ if(b.dataset.act==='feed-more')loadFeedPage();
+ if(b.dataset.act==='session-step'&&UI.sheet){const input=$(b.dataset.target);if(input){input.value=Math.min(+input.max,Math.max(+input.min,(+input.value||0)+(+b.dataset.step)));updateFinishStats();}}
+ if(b.dataset.act==='session-count'&&UI.sheet){const key=b.dataset.k,list=UI.sheet.pk[key]||[];if(+b.dataset.step>0){const empty=list.find(x=>!x.n);if(empty)empty.c=(empty.c||1)+1;else list.push({id:'',n:'',c:1});}else{const item=list[list.length-1];if(item){if((item.c||1)>1)item.c--;else list.pop();}}UI.sheet.pk[key]=list;const picked=$('pkp-'+key);if(picked)picked.innerHTML=pickedHtml(key,key!=='tech');updateFinishStats();}
+ if(b.dataset.act==='session-detail'){const details=document.querySelector('.training-sheet .edit-details');if(details){details.open=true;const input=$('pki-'+b.dataset.k);if(input){input.scrollIntoView({block:'center',behavior:'smooth'});input.focus({preventScroll:true});}}}
+ if(b.dataset.act.startsWith('pk-'))queueMicrotask(updateFinishStats);
+});
 
 /* ---------- boot ---------- */
 try { const t = localStorage.getItem("bjj-theme"); if (t && t !== "system") document.documentElement.dataset.theme = t; } catch (e) {}

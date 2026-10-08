@@ -81,3 +81,16 @@ Under-16 schedules and fees are separate; coaches alone edit belts in the app.
 Basic onboarding keeps contact details encrypted for coaches. Member payment requests
 use the date tapped and exact plan amount, with coach approval and day-based coverage.
 Coach notifications work while the app is open.
+
+### Unified feed and training controls
+
+One timeline combines club-public and accepted-friend training, with audience icons and
+posted times. It fetches 12 posts per page through `/api/feed`, appending on scroll;
+Supabase's legacy monthly docs stay on the server during feed browsing. This endpoint
+requires the member JWT, preserves encrypted friends payloads, and adds no dependencies
+or schema migration. `config.js` provides the same public Supabase configuration to the
+browser and Node function. Deploy the repository to Vercel to enable this endpoint;
+plain static hosting supports local mode but does not run the cloud-feed API.
+Suggested member cards open searchable Discover. A sticky profile/menu header and six
+type cards are shared with refreshed start/finish controls. Run `node tests/feed-api.test.js`
+and the fixture-based Playwright `tests/arrow-v4-smoke.py` for pagination and UI checks.

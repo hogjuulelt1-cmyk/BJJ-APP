@@ -166,3 +166,22 @@ authorization; do not describe them as a server-enforced permission boundary.
 remain local. Routine sync/loading status UI is removed; persistence and error handling
 remain active. Tests: `arrow-smoke.py`, `arrow-v3-smoke.py` and `arrow-admin-smoke.py`
 (the admin test mocks all Supabase requests and never changes production data).
+
+### Unified timeline (October 2026)
+
+The home screen has one feed; public club posts and decryptable accepted-friend posts
+appear together. Audience icons and local posted date/time belong to each card.
+`feed-page.js` shares ordering and stable snapshot/boundary cursors with `api/feed.js`.
+The authenticated Node Vercel function returns at most 12 posts per response. It forwards
+the caller JWT to Supabase, verifies club membership/social eligibility, and uses no
+service-role credentials. Existing monthly storage stays compatible: the server reads
+bounded monthly docs, the browser receives pages only. Month names are queried without
+post bodies. Local fixtures use the same page helper. No schema migration is required.
+Do not reinstate eager feed-doc reads in `clubLoad` or break encrypted friends envelopes.
+
+The IntersectionObserver appends pages without rebuilding the whole main view; errors
+require retry. The profile/menu header stays sticky. Suggested people lead to a searchable
+Discover sheet instead of a separate friends tab. The start/finish screens share six
+accessible type cards, effort and audience radio choices; finish counters allow unnamed
+submission/tap/technique counts with optional details. Keep CLAUDE.md under this name.
+Verification adds `tests/feed-api.test.js` and `tests/arrow-v4-smoke.py` (fixtures only).

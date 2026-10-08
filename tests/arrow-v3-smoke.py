@@ -40,7 +40,7 @@ with sync_playwright() as p:
  assert page.locator('#p-amt').input_value()=='50000'
  click('sheet-save');assert page.evaluate('JSON.parse(localStorage.getItem("bjj-club-local"))["club/test/pay/child"].items[0].status')=='ok'
  click('club-edit');assert page.locator('#c-km').count()==1;page.locator('#c-km').fill('60000');click('sheet-save');assert page.evaluate('JSON.parse(localStorage.getItem("bjj-club-local"))["club/test/profile"].fee.kidsMonth')==60000
- peerkey=page.evaluate('async()=>await ARROW.newAgeKey()');page.evaluate('(key)=>{const c=JSON.parse(localStorage.getItem("bjj-club-local"));c["club/test/members"].list.find(m=>m.uid==="peer").socialPublicKey=key;localStorage.setItem("bjj-club-local",JSON.stringify(c));}',peerkey['publicKey']);page.reload();page.wait_for_timeout(1000);click('tab','[data-v="home"]');click('homeseg','[data-v="friends"]');click('arrow-friend');click('homeseg','[data-v="feed"]')
+ peerkey=page.evaluate('async()=>await ARROW.newAgeKey()');page.evaluate('(key)=>{const c=JSON.parse(localStorage.getItem("bjj-club-local"));c["club/test/members"].list.find(m=>m.uid==="peer").socialPublicKey=key;localStorage.setItem("bjj-club-local",JSON.stringify(c));}',peerkey['publicKey']);page.reload();page.wait_for_timeout(1000);click('tab','[data-v="home"]');click('discover');click('arrow-friend');click('sheet-close')
  # Friends-only sessions are encrypted at rest, including when the account has no eligible recipient keys yet.
  click('tab','[data-v="home"]');click('live-start');click('sheet-save');click('live-inc','[data-k="subs"]');click('live-finish');click('pick','[data-group="audience"][data-v="friends"]');click('sheet-save');page.wait_for_timeout(1300)
  assert page.locator('.share-export [data-act="share-save"]').count()==1 and page.locator('.photo-overlay').count()==1
@@ -56,8 +56,8 @@ with sync_playwright() as p:
  click('pick','[data-group="fmt"][data-v="post"]');assert page.locator('#sh-cv').evaluate('(e)=>e.height===1350')
  click('sheet-close')
  post=page.evaluate('JSON.parse(localStorage.getItem("bjj-club-local"))["club/test/feed/"+new Date().toISOString().slice(0,7)].list.find(p=>p.uid==="local")');assert post['audience']=='friends' and 'sealed' in post and 'min' not in post;assert page.evaluate('async(v)=>(await ARROW.openPayload(v.post.sealed,"peer",v.key)).min===5',{'post':post,'key':peerkey['privateKey']})
- assert page.locator('.feed [data-uid="local"]').count()==0
- click('homeseg','[data-v="friendfeed"]');assert page.locator('.feed [data-uid="local"]').count()==1
+ assert page.locator('.feed [data-uid="local"]').count()==1
+ assert page.locator('.post-audience[aria-label="Friends"]').count()==1
  assert page.evaluate('async(p)=>await ARROW.openPayload(p.sealed,"outsider",JSON.parse(localStorage.getItem("bjj-v1")).settings.socialKey.privateKey)===null',post)
  # Private sessions never create social posts.
  click('live-start');click('sheet-save');click('live-finish');click('pick','[data-group="audience"][data-v="private"]');click('sheet-save');page.wait_for_timeout(800);click('sheet-close')
