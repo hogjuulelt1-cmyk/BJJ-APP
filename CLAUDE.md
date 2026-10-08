@@ -211,3 +211,15 @@ Email accounts use Supabase recovery links. Username-only alias accounts have no
 email: recovery directs them to their coach, who needs Supabase admin access to reset.
 Technique names remain English in Mongolian UI. Versioned Arrow/belt app icons.
 Tests: tests/arrow-v6-smoke.py, with mocked authentication only.
+
+### Admin management
+`api/admin.js` verifies canonical Supabase identity against config.js admins and
+server ARROW_ADMIN_EMAILS. Never trust mutable app/config admins for privileged API
+access. Server-only SUPABASE_SERVICE_ROLE_KEY or SUPABASE_SECRET_KEY enables paged
+Auth accounts and private profile editing. Without it only linked roster accounts
+are shown, while trusted-admin club and coach changes use the caller JWT.
+Revision checks protect club/private settings; no multi-row transactions are
+claimed. Audit entries use owner-private bjj/u/<admin>/admin-audit paths.
+See ADMIN-SETUP.md for setup, encrypted-contact refresh and existing shared-RLS
+limitations. Do not add any backend key to public config or source control.
+Admin tests mock all accounts and writes: admin-api.test.js, arrow-v7-admin-smoke.py.

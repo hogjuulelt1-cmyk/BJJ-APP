@@ -1,5 +1,5 @@
 from static_fixture import install
-import os,json,copy
+import os,json,copy,fnmatch
 from datetime import date
 from urllib.parse import urlparse,parse_qs
 from playwright.sync_api import sync_playwright
@@ -23,7 +23,7 @@ with sync_playwright() as p:
    key=value[3:]
    if key in docs:rows=[{'data':docs[key]}]
   elif value.startswith('like.'):
-   prefix=value[5:].rstrip('*');rows=[{'path':key,'data':value} for key,value in docs.items() if key.startswith(prefix)]
+   pattern=value[5:];rows=[{'path':key,'data':value} for key,value in docs.items() if fnmatch.fnmatchcase(key,pattern)]
   route.fulfill(content_type='application/json',body=json.dumps(rows))
  c.route('**/config.js',lambda r:r.fulfill(content_type='application/javascript',body='window.APP_CONFIG={supabaseUrl:"https://arrow-fixture.invalid",supabaseAnonKey:"fixture"}'))
  c.route('https://arrow-fixture.invalid/**',api)

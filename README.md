@@ -101,3 +101,5 @@ QR/typed-code check-in is available from 60 minutes before a scheduled class thr
 The cloud endpoint validates server time and uses conditional writes for concurrent scans.
 Personal training is always available and is independent of club attendance. Attendance
 cards open named details on demand; coaches can correct the roster there.
+
+Admin console: `/admin`. Registered accounts, club edits, coach grant/revoke, audit history and CSV export. Full private account access requires a server-only Supabase key; see [ADMIN-SETUP.md](ADMIN-SETUP.md).
