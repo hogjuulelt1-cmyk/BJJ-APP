@@ -22,7 +22,7 @@ with sync_playwright() as p:
   target=page.locator('#sheet-body [data-act="'+act+'"]'+extra) if page.locator('#sheet.open').count() and page.locator('#sheet-body [data-act="'+act+'"]'+extra).count() else page.locator('[data-act="'+act+'"]'+extra)
   page.keyboard.press('Escape') if act=='sheet-close' and not target.first.is_visible() else target.first.click();page.wait_for_timeout(100)
  def count():return page.evaluate('JSON.parse(localStorage.getItem("bjj-club-local"))["club/test/att/2026-10"].days["2026-10-08"].length')
- reset();click('tab','[data-v="club"]');assert 'Coach · Active' in page.locator('.clubhead').inner_text();click('clubseg','[data-v="pay"]');assert page.locator('.coach-membership').count()==1 and page.locator('[data-act="club-paynow"]').count()==0
+ reset();click('tab','[data-v="club"]');assert 'Coach · Active' in page.locator('.membership-status').inner_text();click('clubseg','[data-v="pay"]');assert page.locator('.coach-membership').count()==1 and page.locator('[data-act="club-paynow"]').count()==0
  assert page.locator('[data-act="club-pay"][data-uid="local"]').count()==0
  click('menu');assert page.locator('.mic svg').count()==page.locator('.mic').count();assert not any(ch in page.locator('.menu').inner_text() for ch in ['👤','📈','🏠','🗺','🥋','📸','🌐','⚙','🚪']);page.screenshot(path='/tmp/arrow-v5-menu.png');click('sheet-close')
  click('clubseg','[data-v="members"]');assert page.locator('.attendance-card .attendance-count b').inner_text()=='1';assert 'Дорж' not in page.locator('.attendance-card').inner_text();assert page.locator('.attendance-card [data-act="att-tick"]').count()==0
@@ -36,7 +36,7 @@ with sync_playwright() as p:
  click('record');page.locator('#ci-code').fill('ABCDEF');click('sheet-save');assert count()==2
  reset(False,start+2400001);click('tab','[data-v="club"]');click('record');page.locator('#ci-code').fill('ABCDEF');click('sheet-save');assert count()==1;click('sheet-close')
  reset(False,start);click('tab','[data-v="club"]');click('clubseg','[data-v="pay"]');click('club-paynow');assert page.locator('#p-amt,#sheet-body input[type="date"],#sheet-body input[type="month"]').count()==0;click('sheet-save');page.wait_for_timeout(150);payment=page.evaluate('JSON.parse(localStorage.getItem("bjj-club-local"))["club/test/pay/local"].items[0]');assert payment['status']=='pending' and payment['amt']==100000 and payment['start']=='2026-10-08'
- reset(True,lang='mn');click('tab','[data-v="club"]');assert 'Коуч' in page.locator('.clubhead').inner_text();assert page.evaluate('document.documentElement.scrollWidth<=innerWidth')
+ reset(True,lang='mn');click('tab','[data-v="club"]');assert 'Коуч' in page.locator('.membership-status').inner_text();assert page.evaluate('document.documentElement.scrollWidth<=innerWidth')
  assert not errors,errors
  print('PASS V5: coach active/exempt, vector menu, count-only attendance with named detail/coach editing, arbitrary-time personal sessions, gated/idempotent QR-code check-in, regular member payments and Mongolian mobile UI')
  b.close()

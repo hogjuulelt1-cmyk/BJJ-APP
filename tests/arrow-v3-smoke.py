@@ -39,7 +39,7 @@ with sync_playwright() as p:
  click('clubseg','[data-v="members"]');click('club-member','[data-id="child"]');click('coach-record-payment')
  assert page.locator('#p-amt').input_value()=='50000'
  click('sheet-save');assert page.evaluate('JSON.parse(localStorage.getItem("bjj-club-local"))["club/test/pay/child"].items[0].status')=='ok'
- click('club-edit');assert page.locator('#c-km').count()==1;page.locator('#c-km').fill('60000');click('sheet-save');assert page.evaluate('JSON.parse(localStorage.getItem("bjj-club-local"))["club/test/profile"].fee.kidsMonth')==60000
+ page.locator('.club-info-summary').click();click('club-edit');assert page.locator('#c-km').count()==1;page.locator('#c-km').fill('60000');click('sheet-save');assert page.evaluate('JSON.parse(localStorage.getItem("bjj-club-local"))["club/test/profile"].fee.kidsMonth')==60000
  peerkey=page.evaluate('async()=>await ARROW.newAgeKey()');page.evaluate('(key)=>{const c=JSON.parse(localStorage.getItem("bjj-club-local"));c["club/test/members"].list.find(m=>m.uid==="peer").socialPublicKey=key;localStorage.setItem("bjj-club-local",JSON.stringify(c));}',peerkey['publicKey']);page.reload();page.wait_for_timeout(1000);click('tab','[data-v="home"]');click('discover');click('arrow-friend');click('sheet-close')
  # Friends-only sessions are encrypted at rest, including when the account has no eligible recipient keys yet.
  click('tab','[data-v="home"]');click('live-start');click('sheet-save');click('live-inc','[data-k="subs"]');click('live-finish');click('pick','[data-group="audience"][data-v="friends"]');click('sheet-save');page.wait_for_timeout(1300)

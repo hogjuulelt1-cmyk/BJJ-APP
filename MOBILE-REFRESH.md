@@ -52,3 +52,9 @@ V11 verifies the active Supabase Auth settings and database endpoint return HTTP
 without signing in, registering accounts or changing data. This verifies basic
 connectivity, not the production server-only admin key. Vercel project inspection
 is still blocked by connector scope 403. Login journeys pass at 320/390/768px.
+
+V12 reorganizes Club, fixes repeating feed pagination, preserves section scroll
+across pages, improves public club schedules/coach cards and phone coach console,
+and moves password errors into view. Full requested checklist and browser gesture
+limitations are in CLUB-REFRESH.md. Attendance fetch failures offer retry rather
+than marking unloaded history as missed.

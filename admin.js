@@ -297,6 +297,9 @@ managementAct=async function(ds){
 const backToApp=render;
 render=function(){backToApp();const aside=document.querySelector('aside');if(aside&&!aside.querySelector('.admin-back'))aside.insertAdjacentHTML('afterbegin','<a class="btn ghost admin-back" href="/">‹ Back to app</a>');if(!SB.session){const login=$('login');if(login&&!login.querySelector('.admin-back'))login.insertAdjacentHTML('afterbegin','<a class="btn ghost admin-back" href="/">‹ Back to app</a>');}};
 
+const phoneConsoleRender=render;
+render=function(){phoneConsoleRender();const root=$('root');root.querySelectorAll('table').forEach(table=>{const headings=[...table.querySelectorAll('thead th')].map(th=>th.textContent.trim());table.querySelectorAll('tbody tr').forEach(row=>[...row.children].forEach((cell,i)=>{const label=headings[i]||'';cell.dataset.label=I18N.lang==='mn'?(window.BJJ_LANG?.mn?.dict?.[label]||label):label;}));});const aside=root.querySelector('aside'),who=aside?.querySelector('.who');if(who&&!aside.querySelector('.console-account')){const details=document.createElement('details');details.className='console-account';details.innerHTML='<summary>Your account</summary>';who.before(details);details.appendChild(who);}if(UI.role==='coach'){const codes=root.querySelector('main code')?.closest('p');if(codes&&!codes.closest('details')){const details=document.createElement('details');details.className='console-club-info';details.innerHTML='<summary>Club information</summary>';codes.before(details);details.appendChild(codes);}const club=myClubs()[0];if(club&&!root.querySelector('.console-club-edit'))root.querySelector('main').insertAdjacentHTML('beforeend','<a class="btn ghost console-club-edit" href="/?club='+encodeURIComponent(club.id)+'">Edit club profile</a>');}};
+
 async function boot() {
   if (!SB.session) { render(); return; }
   const stopProgress=window.ARROW_UI.slot($("root"));
