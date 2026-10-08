@@ -34,8 +34,10 @@ Implemented:
 
 Pending external inputs:
 
-- User's promised login screenshot has not arrived; login appearance has not been
-  guessed or claimed to match it.
+- Login reference arrived and is implemented in V11: Arrow branding, light background,
+  rounded fields, password visibility toggle, round remember control, recovery links,
+  input-aware primary action and signup link. Face ID is not advertised: implementing
+  it needs a separate passkey/WebAuthn authentication feature.
 - Production SUPABASE_SERVICE_ROLE_KEY / SUPABASE_SECRET_KEY configuration has not
   been confirmed. Full auth-account directory/password/deletion capabilities remain
   unavailable when it is missing; console shows the missing-key notice. Instructions
@@ -45,3 +47,8 @@ Validation uses isolated mocked identities/data: 5 Node API suites, V3–V10 mob
 journeys (including 320px/390px layouts, logo/gallery processing, leap-year DOB,
 profile medals/tabs, KYC, paid gate, member removal/restore and account reset UI).
 No production users, payments, coach roles or reviews are changed by tests.
+
+V11 verifies the active Supabase Auth settings and database endpoint return HTTP 200,
+without signing in, registering accounts or changing data. This verifies basic
+connectivity, not the production server-only admin key. Vercel project inspection
+is still blocked by connector scope 403. Login journeys pass at 320/390/768px.
