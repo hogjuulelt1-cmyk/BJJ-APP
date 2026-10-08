@@ -11,16 +11,16 @@ const MEMBER_DOMAIN = CFG.memberDomain || "member.bjjclub.mn";
 const I18N = {
   lang: "mn", obs: null, names: null,
   pack() { return (window.BJJ_LANG || {})[this.lang] || null; },
-  tr(t) { const p = this.pack(); if (!p) return t; const k = t.trim(); if (!k) return t; const d = p.dict[k]; if (d != null) return t.replace(k, d); if (this.names && this.names.has(k)) return t.replace(k, this.names.get(k)); for (const r of p.rules) { if (r[0].test(k)) { const out = k.replace(r[0], r[1]); if (out !== k) return t.replace(k, this.swapNames(out)); } } if (k.includes(" · ")) { const parts = k.split(" · "); const out = parts.map((p0) => this.one(p0)).join(" · "); if (out !== k) return t.replace(k, out); } if (/[A-Za-z]{3}/.test(k) && this.nameRe) { const out = this.swapNames(k); if (out !== k) return t.replace(k, out); } return t; },
+  tr(t) { const p = this.pack(); if (!p) return t; const k = t.trim(); if (!k) return t; const d = p.dict[k]; if (this.names && this.names.has(k)) return t.replace(k, this.names.get(k)); if (d != null) return t.replace(k, d); if (this.names && this.names.has(k)) return t.replace(k, this.names.get(k)); for (const r of p.rules) { if (r[0].test(k)) { const out = k.replace(r[0], r[1]); if (out !== k) return t.replace(k, this.swapNames(out)); } } if (k.includes(" · ")) { const parts = k.split(" · "); const out = parts.map((p0) => this.one(p0)).join(" · "); if (out !== k) return t.replace(k, out); } if (/[A-Za-z]{3}/.test(k) && this.nameRe) { const out = this.swapNames(k); if (out !== k) return t.replace(k, out); } return t; },
   one(k) { const p = this.pack(); const d = p.dict[k]; if (d != null) return d; if (this.names && this.names.has(k)) return this.names.get(k); for (const r of p.rules) if (r[0].test(k)) { const out = k.replace(r[0], r[1]); if (out !== k) return this.swapNames(out); } return this.swapNames(k); },
   swapNames(t) { if (!this.nameRe) return t; return t.replace(this.nameRe, (m) => this.names.get(m) || m); },
   node(n) { if (n.nodeType === 3) { const v = n.nodeValue; if (n.__i18n === v) return; const o = this.tr(v); if (o !== v) { n.nodeValue = o; n.__i18n = o; } else n.__i18n = v; return; } if (n.nodeType !== 1 || n.tagName === "SCRIPT" || n.tagName === "STYLE") return; for (const a of ["placeholder", "aria-label", "title"]) { const v = n.getAttribute(a); if (v) { const o = this.tr(v); if (o !== v) n.setAttribute(a, o); } } const w = document.createTreeWalker(n, NodeFilter.SHOW_TEXT); let t; while ((t = w.nextNode())) this.node(t); n.querySelectorAll("[placeholder],[aria-label],[title]").forEach((e) => { for (const a of ["placeholder", "aria-label", "title"]) { const v = e.getAttribute(a); if (v) { const o = this.tr(v); if (o !== v) e.setAttribute(a, o); } } }); },
-  buildNames() { this.names = new Map(); for (const n of nodes()) if (n.en && n.n) this.names.set(n.n, n.en); const keys = [...this.names.keys()].filter((k) => k.length > 3).sort((a, b) => b.length - a.length).map((k) => k.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")); this.nameRe = keys.length ? new RegExp("(?<![\\p{L}])(?:" + keys.join("|") + ")(?![\\p{L}])", "gu") : null; },
+  buildNames() { this.names = new Map(); for (const n of nodes()) if (n.en && n.n) this.names.set(n.n, n.n); const keys = [...this.names.keys()].filter((k) => k.length > 3).sort((a, b) => b.length - a.length).map((k) => k.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")); this.nameRe = keys.length ? new RegExp("(?<![\\p{L}])(?:" + keys.join("|") + ")(?![\\p{L}])", "gu") : null; },
   start() { if (this.obs) return; this.buildNames(); this.node(document.body); document.documentElement.lang = "mn"; this.obs = new MutationObserver((muts) => { for (const m of muts) { if (m.type === "characterData") this.node(m.target); else for (const a of m.addedNodes) this.node(a); } }); this.obs.observe(document.body, { childList: true, subtree: true, characterData: true }); },
   stop() { if (this.obs) { this.obs.disconnect(); this.obs = null; } document.documentElement.lang = "en"; },
   set(l) { this.lang = l; try { localStorage.setItem("bjj-lang", l); } catch (e) {} if (l === "mn") this.start(); else this.stop(); },
 };
-function dn(n) { return I18N.lang === "mn" ? (n.en || I18N.tr(n.n)) : n.n; }
+function dn(n) { return n.n; }
 function tr(t) { return I18N.lang === "mn" ? I18N.tr(t) : t; }
 function emailOf(login) { login = String(login || "").trim().toLowerCase(); return login.includes("@") ? login : login.replace(/[^a-z0-9._-]/g, "") + "@" + MEMBER_DOMAIN; }
 function loginName(email) { return String(email || "").replace("@" + MEMBER_DOMAIN, ""); }
@@ -50,8 +50,8 @@ const CHECK = '<svg viewBox="0 0 24 24"><path d="M5 12l5 5L19 7"/></svg>';
 const SB = {
   url: (CFG.supabaseUrl || "").replace(/\/$/, ""), key: CFG.supabaseAnonKey || "", session: null,
   configured() { return !!(this.url && this.key); },
-  loadSession() { try { this.session = JSON.parse(localStorage.getItem("cb-sb-session") || "null"); } catch (e) { this.session = null; } },
-  storeSession(s) { this.session = s; try { s ? localStorage.setItem("cb-sb-session", JSON.stringify(s)) : localStorage.removeItem("cb-sb-session"); } catch (e) {} },
+  loadSession() { try { this.session = JSON.parse(sessionStorage.getItem("cb-sb-session") || localStorage.getItem("cb-sb-session") || "null"); } catch (e) { this.session = null; } },
+  storeSession(s) { this.session = s; try { localStorage.removeItem("cb-sb-session"); sessionStorage.removeItem("cb-sb-session"); if (s) (localStorage.getItem("arrow-remember") === "0" ? sessionStorage : localStorage).setItem("cb-sb-session", JSON.stringify(s)); } catch (e) {} },
   async auth(body, grant) {
     const r = await fetch(this.url + "/auth/v1/token?grant_type=" + grant, { method: "POST", headers: { apikey: this.key, "Content-Type": "application/json" }, body: JSON.stringify(body) });
     const j = await r.json().catch(() => ({})); if (!r.ok) throw new Error(j.error_description || j.msg || "auth");
@@ -137,7 +137,7 @@ function flush(key) {
       delete dirty[key]; if (!Object.keys(dirty).length) setSync(mode === "cloud" ? "ok" : "local");
     } catch (e) { if (e.message === "noauth") showLogin("Please sign in again."); else setSync("err", "Could not save, retrying"); setTimeout(() => flush(key), 5000); }
   };
-  chains[key] = (chains[key] || Promise.resolve()).then(run, run);
+  chains[key] = (chains[key] || Promise.resolve()).then(run, run); return chains[key];
 }
 
 async function startCloud() {
@@ -258,17 +258,43 @@ function startLocal() {
   normalize(); if (!S.settings.seeded) { seedAll(false); localStorage.setItem(LKEY, JSON.stringify(S)); } else if (mergeSeed()) localStorage.setItem(LKEY, JSON.stringify(S));
   mode = "local"; applyTheme(); if (S.settings.lang && S.settings.lang !== I18N.lang) I18N.set(S.settings.lang); if (I18N.lang === "mn") I18N.buildNames(); setSync("local"); render(); joinPending();
 }
-function showLogin(msg, signup) {
-  document.body.classList.add("locked"); $("tabs").innerHTML = ""; $("belt").innerHTML = "";
-  $("main").innerHTML = '<form class="card" id="login"><h2>' + (signup ? "Create your account" : "Sign in") + "</h2>" + joinBanner() + (msg ? '<p class="small" style="color:var(--bad)">' + esc(msg) + "</p>" : signup ? '<p class="muted small">Your own account: your techniques, rolls and training log stay private. Join your club after.</p>' : "") +
-    (signup ? '<div class="field"><label for="lg-n">Real name (for your coach)</label><input id="lg-n" type="text" autocomplete="name" required placeholder="Бат-Эрдэнэ"></div><div class="field"><label for="lg-dob">Date of birth</label><input id="lg-dob" type="date" required max="' + todayIso() + '"></div><p class="muted small">Your age is private. Only you and your coaches can see it.</p>' : "") +
-    '<div class="field"><label for="lg-e">' + (signup ? "Username" : "Email or username") + '</label><input id="lg-e" type="text" autocomplete="username" required autocapitalize="none" autocorrect="off" spellcheck="false"></div>' +
-    '<div class="field"><label for="lg-p">Password</label><input id="lg-p" type="password" autocomplete="' + (signup ? "new-password" : "current-password") + '" required' + (signup ? ' minlength="6"' : "") + "></div>" +
-    '<button class="btn" type="submit">' + (signup ? "Create account" : "Sign in") + '</button><button class="btn ghost" type="button" data-act="auth-mode" data-v="' + (signup ? "in" : "up") + '">' + (signup ? "I already have an account" : "New here? Create an account") + "</button></form>";
-  setSync("local", "Not signed in");
-  if (signup) { $("login").addEventListener("submit", async (e) => { e.preventDefault(); const b = e.target.querySelector("button"); b.disabled = true; try { const un = A.username(sv("lg-e")), dob = sv("lg-dob"); if (!A.validUsername(un) || A.age(dob, todayIso()) === null) { b.disabled = false; toast("Enter a valid username and date of birth"); return; } const ok = await SB.signup(emailOf(un), sv("lg-p"), sv("lg-n").trim(), dob, un); if (ok) { S.settings.name = sv("lg-n").trim(); startCloud(); } else showLogin("Account created. Confirm the email we sent you, then sign in."); } catch (err) { showLogin(String(err.message || err).replace(/^Error: /, ""), true); } }); return; }
-  $("login").addEventListener("submit", async (e) => { e.preventDefault(); const b = e.target.querySelector("button"); b.disabled = true; try { await SB.login(emailOf(sv("lg-e")), sv("lg-p")); startCloud(); } catch (err) { b.disabled = false; showLogin("Wrong email or password."); } });
+function buttonBusy(button, busy, label) {
+  if (!button) return; if (busy) { if (button.dataset.busy) return; button.dataset.busy = '1'; button.dataset.original = button.innerHTML; button.disabled = true; button.setAttribute('aria-busy','true'); button.innerHTML = '<span class="button-spinner" aria-hidden="true"></span>' + esc(label || 'Уншиж байна…'); }
+  else { button.disabled = false; button.removeAttribute('aria-busy'); if (button.dataset.busy) button.innerHTML = button.dataset.original; delete button.dataset.busy; delete button.dataset.original; }
 }
+function rememberLogin(login) { try { const remember = !$('lg-remember') || $('lg-remember').checked; localStorage.setItem('arrow-remember',remember?'1':'0'); if (remember) localStorage.setItem('arrow-login',login); else localStorage.removeItem('arrow-login'); } catch(e) {} }
+function showLogin(msg, signup) {
+  document.body.classList.add('locked'); $('tabs').innerHTML = ''; $('belt').innerHTML = '';
+  let remembered=''; try { remembered=localStorage.getItem('arrow-login')||''; } catch(e) {}
+  $('main').innerHTML = '<form class="card auth-card" id="login"><span class="eyebrow">ARROW JIU-JITSU</span><h2>'+(signup?'Create your account':'Sign in')+'</h2>'+joinBanner()+(msg?'<p role="alert" class="auth-message">'+esc(msg)+'</p>':'')+
+    (signup?'<div class="field"><label for="lg-n">Real name</label><input id="lg-n" type="text" autocomplete="name" required placeholder="Бат-Эрдэнэ"><small class="muted">Нэрээ кирилл үсгээр бичнэ үү.</small></div><div class="field"><label for="lg-dob">Date of birth</label><input id="lg-dob" type="date" required max="'+todayIso()+'"></div>':'')+
+    '<div class="field"><label for="lg-e">'+(signup?'Username':'Email or username')+'</label><input id="lg-e" type="text" autocomplete="username" required autocapitalize="none" autocorrect="off" spellcheck="false" value="'+esc(signup?'':remembered)+'"></div>'+
+    '<div class="field"><label for="lg-p">Password</label><input id="lg-p" type="password" autocomplete="'+(signup?'new-password':'current-password')+'" required'+(signup?' minlength="8"':'')+'></div><label class="remember-row"><input type="checkbox" id="lg-remember"'+(localStorage.getItem('arrow-remember')==='0'?'':' checked')+'>Remember me</label>'+
+    '<button class="btn wide" type="submit">'+(signup?'Create account':'Sign in')+'</button><button class="btn ghost wide" type="button" data-act="auth-mode" data-v="'+(signup?'in':'up')+'">'+(signup?'I already have an account':'New here? Create an account')+'</button>'+(!signup?'<div class="auth-recovery"><button type="button" class="btn ghost" data-recovery="username">Forgot username?</button><button type="button" class="btn ghost" data-recovery="password">Forgot password?</button></div>':'')+'</form>';
+  $('login').addEventListener('submit',async(e)=>{e.preventDefault();const button=e.target.querySelector('button[type="submit"]');if(button.disabled)return;const login=sv('lg-e'),name=sv('lg-n').trim(),dob=sv('lg-dob'),un=A.username(login);
+    if(signup&&(!A.validUsername(un)||A.age(dob,todayIso())===null)){toast('Enter a valid username and date of birth');return;}
+    if(signup&&!/^[А-Яа-яЁёӨөҮү\s.'’-]+$/.test(name)){toast('Нэрээ кирилл үсгээр бичнэ үү.');return;}
+    rememberLogin(login);buttonBusy(button,true,signup?'Бүртгэж байна…':'Нэвтэрч байна…');
+    try {if(signup){const ok=await SB.signup(emailOf(un),sv('lg-p'),name,dob,un);if(!ok){showLogin('Бүртгэл үүслээ. Нэвтэрч чадахгүй бол клубийн коучтай холбогдоно уу.');return;}}else await SB.login(emailOf(login),sv('lg-p')); S=blank();await startCloud();}
+    catch(err){const message=signup?String(err.message||err):'Wrong email or password.';const notice=document.createElement('p');notice.className='auth-message';notice.setAttribute('role','alert');notice.textContent=tr(message);e.target.querySelector('.auth-message')?.remove();e.target.prepend(notice);}
+    finally{buttonBusy(button,false);}
+  });
+}
+function recoverySheet(kind) {
+  let saved='';try{saved=localStorage.getItem('arrow-login')||'';}catch(e){}
+  if(kind==='username'){openSheet('Forgot username?','<p>Хэрэглэгчийн нэрээ мартсан бол клубийн коучтай холбогдоорой. Коуч гишүүдийн жагсаалтаас таны нэрийг шалгаж өгнө.</p>'+(saved?'<p>Энэ төхөөрөмжид хадгалсан нэвтрэх нэр: <b>'+esc(saved)+'</b></p>':'')+'<p class="muted">Имэйлээр бүртгүүлсэн бол имэйлээрээ нэвтэрч болно.</p>',{});return;}
+  openSheet('Forgot password?','<p>Бодит имэйлээр бүртгүүлсэн бол сэргээх холбоос авна. Зөвхөн username ашигладаг эрхээ сэргээхийн тулд клубийн коучтай холбогдоно уу.</p>'+field('recover-email','Email',inp('recover-email','','email','required autocomplete="email"'))+'<p id="recovery-result" role="status"></p>',{saveLabel:'Send reset link',onSave:async()=>{const email=sv('recover-email').trim();if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)||email.toLowerCase().endsWith('@'+MEMBER_DOMAIN)){toast('Бүртгэлдээ ашигласан бодит имэйлээ оруулна уу.');return false;}
+    const r=await fetch(SB.url+'/auth/v1/recover?redirect_to='+encodeURIComponent(location.origin+location.pathname),{method:'POST',headers:{apikey:SB.key,'Content-Type':'application/json'},body:JSON.stringify({email})});if(!r.ok)throw Error('Сэргээх холбоос илгээж чадсангүй. Дахин оролдоно уу.');$('recovery-result').textContent='Энэ имэйлтэй эрх байвал сэргээх холбоос очно. Имэйлээ шалгана уу.';return false;}});
+}
+async function resetPasswordFromLink() {
+  const params=new URLSearchParams(location.hash.slice(1));if(params.get('type')!=='recovery')return false;
+  const access=params.get('access_token'),refresh=params.get('refresh_token');history.replaceState(null,'',location.pathname+location.search);
+  if(!access||!refresh){showLogin('Сэргээх холбоос хүчингүй байна. Шинэ холбоос авна уу.');return true;}
+  document.body.classList.add('locked');$('main').innerHTML='<form id="reset-password" class="card auth-card"><h2>Шинэ нууц үг</h2>'+field('reset-new','Password',inp('reset-new','','password','required minlength="8" autocomplete="new-password"'))+field('reset-confirm','Confirm password',inp('reset-confirm','','password','required minlength="8" autocomplete="new-password"'))+'<button class="btn wide">Save password</button><p role="status" id="reset-result"></p></form>';
+  $('reset-password').addEventListener('submit',async e=>{e.preventDefault();if(sv('reset-new')!==sv('reset-confirm')){toast('Нууц үгүүд ижил байх ёстой.');return;}const b=e.target.querySelector('button');if(b.disabled)return;buttonBusy(b,true,'Хадгалж байна…');try{const r=await fetch(SB.url+'/auth/v1/user',{method:'PUT',headers:{apikey:SB.key,Authorization:'Bearer '+access,'Content-Type':'application/json'},body:JSON.stringify({password:sv('reset-new')})});if(!r.ok)throw Error('Холбоосын хугацаа дууссан байна. Шинэ холбоос авна уу.');SB.storeSession(null);showLogin('Нууц үг шинэчлэгдлээ. Шинэ нууц үгээрээ нэвтэрнэ үү.');}catch(err){$('reset-result').textContent=err.message;}finally{buttonBusy(b,false);}});return true;
+}
+document.addEventListener('click',e=>{const b=e.target.closest('[data-recovery]');if(b)recoverySheet(b.dataset.recovery);});
+window.addEventListener('hashchange',()=>{if(SB.configured())resetPasswordFromLink();});
 
 /* ---------- tree helpers ---------- */
 const CATS = [["stand", "Standing"], ["guard", "Guard, bottom"], ["pass", "Passing, top"], ["top", "Dominant, top"], ["escape", "Escapes, bottom"]];
@@ -384,10 +410,10 @@ function openSheet(title, body, opt) {
 function closeSheet() { scanStop(); $("sheet").classList.remove("open"); $("backdrop").classList.remove("open"); UI.sheet = null; UI.sheetSave = null; UI.sheetDel = null; setTimeout(() => { if (!UI.sheet) $("sheet-body").innerHTML = ""; }, 400); }
 async function finishSheetSave(button) {
   if (!UI.sheetSave || UI.savingSheet) return;
-  const sheet = UI.sheet; UI.savingSheet = true; if (button) button.disabled = true;
+  const sheet = UI.sheet; UI.savingSheet = true; button = button || document.querySelector('[data-act="sheet-save"]'); buttonBusy(button,true,'Хадгалж байна…');
   try { if (await UI.sheetSave() !== false && UI.sheet === sheet) closeSheet(); }
   catch (e) { toast("Could not save: " + e.message); }
-  finally { UI.savingSheet = false; if (button && button.isConnected) button.disabled = false; }
+  finally { UI.savingSheet = false; if (button && button.isConnected) buttonBusy(button,false); }
 }
 function pickVal(group, def) { return UI.sheet && UI.sheet.picks[group] != null ? UI.sheet.picks[group] : def; }
 
@@ -2361,7 +2387,7 @@ function socialName(m) { return m && m.username ? '@' + m.username : 'Member'; }
 function ageFields(prefix) { return field(prefix + '-dob', 'Date of birth', inp(prefix + '-dob', S.settings.birthDate || '', 'date', 'required max="' + todayIso() + '"')) + '<p class="muted small">Your age is private. Only you and your coaches can see it.</p>'; }
 function ageGate() { return '<form id="arrow-age" class="card"><h2>Complete your profile</h2><p>Enter your date of birth to continue.</p>' + ageFields('age') + '<button class="btn wide" type="submit">Continue</button></form>'; }
 const normalizeBase = normalize;
-normalize = function () { normalizeBase(); const ss = SB.session || {}; if (!S.settings.birthDate && ss.birthDate) S.settings.birthDate = ss.birthDate; if (!S.settings.username) S.settings.username = ss.username || A.username(loginName(ss.email || '')); };
+normalize = function () { normalizeBase(); const ss = SB.session || {}; if (!S.settings.name && ss.name) S.settings.name = ss.name; if (!S.settings.birthDate && ss.birthDate) S.settings.birthDate = ss.birthDate; if (!S.settings.username) S.settings.username = ss.username || A.username(loginName(ss.email || '')); };
 myHandle = function () { return S.settings.username || A.username(loginName((SB.session || {}).email || '')) || 'me'; };
 const renderBase = render;
 render = function (anim) { if (myAge() === null || !contactComplete()) { renderHeader(); renderTabs(); $('main').innerHTML = onboardingForm(); return; } if (clubNeeds() && !CLUB.busy) clubLoad(); renderBase(anim); updateNoticeBadge(); };
@@ -2414,7 +2440,7 @@ clubLoad = async function () {
 };
 profileEditSheet = function () {
   const body = '<div class="avpick"><span class="av xl" id="pf-av">' + avatarInner(myName(), S.settings.avatar) + '</span><div class="avpick-b"><label for="pf-photo" class="btn ghost">Choose a photo</label><input id="pf-photo" type="file" accept="image/*" hidden><button class="btn ghost" data-act="avatar-rm"' + (S.settings.avatar ? '' : ' hidden') + '>Remove photo</button></div></div>' +
-    '<div id="pf-crop" class="profile-crop"></div>' + field('f-name', 'Real name (for your coach)', inp('f-name', S.settings.name || '', 'text', 'required autocomplete="name" placeholder="Бат-Эрдэнэ"')) +
+    '<div id="pf-crop" class="profile-crop"></div>' + field('f-name', 'Real name', inp('f-name', S.settings.name || '', 'text', 'required autocomplete="name" placeholder="Бат-Эрдэнэ"')) +
     field('f-username', 'Social username', inp('f-username', myHandle(), 'text', 'required autocapitalize="none" pattern="[a-z0-9][a-z0-9._-]{2,29}"')) + ageFields('pf') + field('f-bio', 'Bio', ta('f-bio', S.settings.bio || '', '')) + contactFields();
   openSheet('Edit profile', body, { state: { av: S.settings.avatar || '' }, saveLabel: 'Done', async onSave() {
     if (UI.sheet.photoLoading) return false;
@@ -2502,7 +2528,7 @@ const classSheetBase = classSheet;
 classSheet = function (i) { if (!isAdmin()) return; const all = (CLUB.profile.schedule || []).slice().sort((a,b)=>a.d-b.d || String(a.t).localeCompare(String(b.t))); const x = i == null ? null : all[i]; classSheetBase(i); const extra = document.createElement('div'); extra.innerHTML = '<div class="field"><span class="lbl">Class group</span>' + chips('agegroup', [['kids','Kids'],['adult','Adults'],['all','All ages']], x ? scheduleGroup(x) : 'adult') + '</div>'; $('sheet-body').insertBefore(extra,$('sheet-body').querySelector('.foot')); UI.sheet.picks.agegroup = x ? scheduleGroup(x) : 'adult'; const old = UI.sheetSave; UI.sheetSave = async function () { const group = pickVal('agegroup','adult'); const result = await old(); if (result) { const rec = x || CLUB.profile.schedule[CLUB.profile.schedule.length-1]; rec.group = rec.kind === 'kids' ? 'kids' : rec.kind === 'open' ? 'all' : group; await cset('club/' + CLUB.id + '/profile',CLUB.profile); render(); } return result; }; };
 const shareSheetBase = shareSheet;
 shareSheet = function (id, fmt) { shareSheetBase(id, fmt); if (!$('sh-cv')) return; const foot = $('sheet-body').querySelector('.foot'); foot.innerHTML = '<button class="btn wide" data-act="sheet-close">Done</button>'; };
-document.addEventListener('submit', async (e) => { if (e.target.id !== 'arrow-age') return; e.preventDefault(); const dob = sv('age-dob'); if (A.age(dob,todayIso()) === null) { toast('Enter a valid date of birth'); return; } if (!validContact(sv('pf-phone'),sv('pf-address')) || !sv('on-name').trim() || !A.validUsername(sv('on-user'))) { toast('Complete your name and contact details'); return; } Object.assign(S.settings,{birthDate:dob,name:sv('on-name').trim(),username:A.username(sv('on-user')),phone:sv('pf-phone').trim(),address:sv('pf-address').trim(),socialAddress:sv('pf-social').trim(),onboardingComplete:true}); save('settings'); if (CLUB.id) { await clubUpdateMe(); await readPrivateProfiles(); } else if (S.settings.clubId) await clubLoad(); render(); });
+document.addEventListener('submit', async (e) => { if (e.target.id !== 'arrow-age') return; e.preventDefault(); const dob = sv('age-dob'); if (A.age(dob,todayIso()) === null) { toast('Enter a valid date of birth'); return; } if (!validContact(sv('pf-phone'),sv('pf-address')) || !(sv('on-name').trim()||S.settings.name) || !A.validUsername(sv('on-user')||S.settings.username)) { toast('Complete your name and contact details'); return; } Object.assign(S.settings,{birthDate:dob,name:sv('on-name').trim()||S.settings.name,username:A.username(sv('on-user')||S.settings.username),phone:sv('pf-phone').trim(),address:sv('pf-address').trim(),socialAddress:sv('pf-social').trim(),onboardingComplete:true}); const button=e.target.querySelector('button[type="submit"]'); if(button?.disabled)return;buttonBusy(button,true,'Хадгалж байна…');try{save('settings');await flush('settings'); if (CLUB.id) { await clubUpdateMe(); await readPrivateProfiles(); } else if (S.settings.clubId) await clubLoad(); render();}catch(err){toast('Could not save: '+err.message);}finally{buttonBusy(button,false);} });
 document.addEventListener('click', (e) => { const b=e.target.closest('[data-act]'); if (!b) return; if (b.dataset.act === 'arrow-notify-enable' && 'Notification' in window) Notification.requestPermission().then((p)=>toast(p === 'granted' ? 'Notifications enabled' : 'Allow notifications in your browser')); if (b.dataset.act === 'arrow-friend') friendAction(b.dataset.uid,b.dataset.v).catch(()=>toast('Could not save your friend request')); if (b.dataset.act === 'arrow-day') calendarDay(b.dataset.d); if (b.dataset.act === 'arrow-notices') noticesSheet(); });
 
 /* Arrow mobile refresh: membership, onboarding and audience-aware social. */
@@ -2510,8 +2536,8 @@ function myTrack() { const n = myAge(); return n !== null && n < 16 ? 'kids' : '
 function mySchedule() { return ((CLUB.profile || {}).schedule || []).filter(x=>scheduleGroup(x)==='all'||scheduleGroup(x)===myTrack()); }
 function validContact(phone,address) { return String(phone||'').replace(/\D/g,'').length>=8 && String(address||'').trim().length>=5; }
 function contactComplete() { return validContact(S.settings.phone,S.settings.address); }
-function contactFields() { return '<section class="form-section"><h3>Contact details</h3><p class="muted small">Private to you and your coaches</p>' + field('pf-phone','Phone number',inp('pf-phone',S.settings.phone||'','tel','required autocomplete="tel" placeholder="99112233"')) + field('pf-address','Home address',ta('pf-address',S.settings.address||'','District, street, building')) + field('pf-social','Social profile (optional)',inp('pf-social',S.settings.socialAddress||'','text','placeholder="Instagram / Facebook"')) + '</section>'; }
-function onboardingForm() { return '<form id="arrow-age" class="card onboarding"><span class="eyebrow">WELCOME TO ARROW</span><h2>Your first step onto the mat</h2><p class="muted">Complete your member details so your coach can help you.</p>' + field('on-name','Real name (for your coach)',inp('on-name',S.settings.name||'','text','required autocomplete="name"')) + field('on-user','Social username',inp('on-user',myHandle()==='me'?'':myHandle(),'text','required autocapitalize="none"')) + ageFields('age') + contactFields() + '<button class="btn wide" type="submit">Complete profile</button></form>'; }
+function contactFields() { return '<section class="form-section"><h3>Contact details</h3><p class="muted small">Private to you and your coaches</p>' + field('pf-phone','Phone number',inp('pf-phone',S.settings.phone||'','tel','required autocomplete="tel" placeholder="99112233"')) + field('pf-address','Home address',ta('pf-address',S.settings.address||'','Дүүрэг, хороо, гудамж, байр — кириллээр бичнэ үү')) + field('pf-social','Social profile (optional)',inp('pf-social',S.settings.socialAddress||'','text','placeholder="Instagram / Facebook"')) + '</section>'; }
+function onboardingForm() { return '<form id="arrow-age" class="card onboarding"><span class="eyebrow">WELCOME TO ARROW</span><h2>Your first step onto the mat</h2><p class="muted">Complete your member details so your coach can help you.</p>' + (S.settings.name?'':field('on-name','Real name',inp('on-name','','text','required autocomplete="name"'))+'<p class="muted small">Нэрээ кирилл үсгээр бичнэ үү.</p>') + (S.settings.username?'':field('on-user','Social username',inp('on-user','','text','required autocapitalize="none"'))) + ageFields('age') + contactFields() + '<button class="btn wide" type="submit">Complete profile</button></form>'; }
 function coachPublicKeys() { const keys={}; for (const id of (CLUB.profile||{}).admins||[]) if ((CLUB.profile.ageKeys||{})[id]) keys[id]=CLUB.profile.ageKeys[id]; return keys; }
 async function readPrivateProfiles() { CLUB.privateProfiles={}; if (!isAdmin()) return; const key=((S.settings.coachAgeKeys||{})[CLUB.id]||{}).privateKey; for (const m of CLUB.members.list||[]) { const value=await A.openPayload(m.privateProfile,myUid(),key); if(value) CLUB.privateProfiles[m.uid||m.id]=value; } }
 function acceptedFriends() { return (((CLUB.friends||{}).list)||[]).filter(r=>r.status==='accepted'&&(r.from===myUid()||r.to===myUid())).map(r=>r.from===myUid()?r.to:r.from); }
@@ -2706,10 +2732,14 @@ async function attendanceSheet(date,manage) {
 }
 document.addEventListener('click',e=>{const b=e.target.closest('[data-act="attendance-open"]');if(b)attendanceSheet(b.dataset.date);});
 
+/* Delayed network progress avoids flashing on cached reads. */
+let networkPending=0,networkTimer;
+const appFetch=window.fetch.bind(window);
+window.fetch=async function(...args){networkPending++;clearTimeout(networkTimer);networkTimer=setTimeout(()=>{if(networkPending){let n=$('network-progress');if(!n){n=document.createElement('div');n.id='network-progress';n.setAttribute('role','status');n.setAttribute('aria-live','polite');n.innerHTML='<span class="button-spinner" aria-hidden="true"></span>Уншиж байна…';document.body.append(n);}n.hidden=false;}},180);try{return await appFetch(...args);}finally{if(--networkPending===0){clearTimeout(networkTimer);if($('network-progress'))$('network-progress').hidden=true;}}};
 /* ---------- boot ---------- */
 try { const t = localStorage.getItem("bjj-theme"); if (t && t !== "system") document.documentElement.dataset.theme = t; } catch (e) {}
 try { const l = localStorage.getItem("bjj-lang"); I18N.lang = l === "en" ? "en" : "mn"; } catch (e) { I18N.lang = "mn"; }
 if (I18N.lang === "mn") I18N.start();
 try { const u = new URLSearchParams(location.search); const pj = parseJoinParams(u); if (pj) { localStorage.setItem("bjj-join", JSON.stringify(pj)); history.replaceState(null, "", location.pathname + location.hash); } } catch (e) {}
-if (SB.configured()) { SB.loadSession(); if (SB.session) { setSync("saving", ""); startCloud(); } else showLogin("", !!pendingJoin()); } else startLocal();
+if (SB.configured()) { resetPasswordFromLink().then(handled=>{if(handled)return; SB.loadSession(); if (SB.session) { setSync("saving", ""); startCloud(); } else showLogin("", !!pendingJoin()); }); } else startLocal();
 })();

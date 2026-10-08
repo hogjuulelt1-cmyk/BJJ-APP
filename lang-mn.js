@@ -280,3 +280,7 @@ Object.assign(window.BJJ_LANG.mn.dict,{
  'Please scan again':'QR-ийг дахин уншуулаарай','Complete your date of birth':'Төрсөн өдрөө бүртгэнэ үү',
  'Club membership required':'Клубт нэгдсэн байх шаардлагатай'
 });
+
+Object.assign(window.BJJ_LANG.mn.dict, {
+'Real name':'Өөрийн нэр','Remember me':'Нэвтрэх эрхийг хадгалах','Forgot username?':'Хэрэглэгчийн нэрээ мартсан уу?','Forgot password?':'Нууц үгээ мартсан уу?','Send reset link':'Сэргээх холбоос авах','Confirm password':'Нууц үгээ давтах','Save password':'Нууц үг хадгалах','Date of birth':'Төрсөн он, сар, өдөр'
+});

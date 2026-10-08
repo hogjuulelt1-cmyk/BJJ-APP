@@ -163,8 +163,7 @@ Underlying shared club-row RLS is unchanged: client coach controls are not backe
 authorization; do not describe them as a server-enforced permission boundary.
 
 `share-frame.js` draws three original BJJ frames with 9:16/4:5 exports. Share photos
-remain local. Routine sync/loading status UI is removed; persistence and error handling
-remain active. Tests: `arrow-smoke.py`, `arrow-v3-smoke.py` and `arrow-admin-smoke.py`
+remain local. Synced labels remain removed. Delayed network loading and busy buttons use Cyrillic text. Tests: `arrow-smoke.py`, `arrow-v3-smoke.py` and `arrow-admin-smoke.py`
 (the admin test mocks all Supabase requests and never changes production data).
 
 ### Unified timeline (October 2026)
@@ -203,3 +202,12 @@ Supabase shared-doc RLS is unchanged; this is the updated scan flow, not a migra
 restricting all legacy clients' direct writes. Coaches retain explicit manual corrections.
 Tests: `check-in-api.test.js` and `arrow-v5-smoke.py`; Playwright static fixture routing can
 run browser tests without a local HTTP server (Chromium still needs socket permissions).
+
+### Auth refresh
+Signup requires a Cyrillic real name and full birth date. Metadata fills missing private
+profile settings; onboarding does not ask an existing name or username again. Remember
+me stores the Supabase session and login; opt-out uses sessionStorage. No passwords stored.
+Email accounts use Supabase recovery links. Username-only alias accounts have no real
+email: recovery directs them to their coach, who needs Supabase admin access to reset.
+Technique names remain English in Mongolian UI. Versioned Arrow/belt app icons.
+Tests: tests/arrow-v6-smoke.py, with mocked authentication only.
