@@ -1,6 +1,6 @@
 /* Authenticated community projections. Uses the caller JWT; private profile fields stay in owner docs. */
 'use strict';
-const config=require('../config.js');
+const config=require('../config.js'),paging=require('../feed-page.js');
 const safeId=x=>typeof x==='string'&&/^[a-zA-Z0-9_-]{1,100}$/.test(x);
 module.exports=async function(req,res){
  res.setHeader('Cache-Control','private, no-store');
@@ -8,7 +8,7 @@ module.exports=async function(req,res){
  const q=new URL(req.url,'https://arrowbjjapp.vercel.app').searchParams;let body=req.body||{};
  try{if(typeof body==='string')body=JSON.parse(body);}catch(_){return res.status(400).json({error:'Invalid request'});}
  const club=q.get('club')||body.club,action=q.get('action')||body.action;
- if(!safeId(club)||!['profile','publish','leaderboard','partners','partner-save','remove'].includes(action))return res.status(400).json({error:'Invalid request'});
+ if(!safeId(club)||!['profile','profile-feed','publish','leaderboard','partners','partner-save','remove'].includes(action))return res.status(400).json({error:'Invalid request'});
  if(req.method!==( ['publish','partner-save','remove'].includes(action)?'POST':'GET'))return res.status(405).json({error:'Method not allowed'});
  const headers={apikey:config.supabaseAnonKey,Authorization:auth};
  async function request(path,opt){const r=await fetch(config.supabaseUrl+path,{...opt,headers:{...headers,...opt?.headers},signal:AbortSignal.timeout(15000)});if(!r.ok){const e=new Error('Upstream failed');e.status=[401,403,409].includes(r.status)?r.status:502;throw e;}return r.status===204?[]:r.json();}
@@ -21,22 +21,31 @@ module.exports=async function(req,res){
   const user=await request('/auth/v1/user'),base='club/'+club+'/';const members=await doc(base+'members'),me=(members?.list||[]).find(m=>m.uid===user.id);
   if(!me)return res.status(403).json({error:'Club membership required'});
   const social=me.socialAllowed===true;
-  if(['profile','leaderboard','publish'].includes(action)&&!social)return res.status(403).json({error:'Social unavailable'});
+  if(['profile','profile-feed','leaderboard','publish'].includes(action)&&!social)return res.status(403).json({error:'Social unavailable'});
   if(action==='publish'){
    const [settings,log,comp]=await Promise.all(['settings','log','comp'].map(k=>doc('bjj/u/'+user.id+'/'+k)));
    const show=Object.fromEntries(['workouts','scores','competition','friends'].map(k=>[k,settings?.profileVisibility?.[k]!==false]));
    const data={uid:user.id,show,bio:String(settings?.bio||'').slice(0,300),updatedAt:Date.now()};
    if(show.workouts)data.workouts=(log?.items||[]).filter(s=>(s.audience||'public')==='public').sort((a,b)=>b.d.localeCompare(a.d)).slice(0,30).map(s=>({id:s.id,d:s.d,type:s.type,min:s.min,rounds:s.rolls||0}));
+   const featured=settings?.featuredMedal;const results=featured?.startsWith('club:')?await doc(base+'results'):null;const selected=featured?.startsWith('comp:')?(comp?.events||[]).find(e=>'comp:'+e.id===featured):(results?.list||[]).find(e=>'club:'+e.id===featured&&e.uid===user.id&&e.status==='ok');if(selected&&['gold','silver','bronze'].includes(selected.medal))data.featuredMedal={n:String(selected.n||selected.event||'').slice(0,150),medal:selected.medal,d:selected.d};
    if(show.competition)data.competition=(comp?.events||[]).slice(-30).map(e=>({n:String(e.n||'').slice(0,150),d:e.d,medal:e.medal||'',div:String(e.div||'').slice(0,100)}));
    await set(base+'profiles/'+user.id,data);return res.status(200).json({ok:true});
   }
   if(action==='profile'){
    const id=q.get('uid');if(!safeId(id))return res.status(400).json({error:'Invalid member'});const m=(members.list||[]).find(x=>x.uid===id&&x.socialAllowed===true);if(!m)return res.status(404).json({error:'Profile unavailable'});
    const [p,clubProfile,friends]=await Promise.all([doc(base+'profiles/'+id),doc(base+'profile'),doc(base+'friends')]);const show={workouts:true,scores:true,competition:true,friends:true,...p?.show};
-   const profile={uid:id,username:m.username||'member',av:m.av||'',belt:m.belt||'white',stripes:m.stripes||0,club:clubProfile?.n||club,bio:p?.bio||'',show};
+   const profile={uid:id,username:m.username||'member',av:m.av||'',belt:m.belt||'white',stripes:m.stripes||0,club:clubProfile?.n||club,bio:p?.bio||'',show,featuredMedal:p?.featuredMedal||null};
    if(show.workouts)profile.workouts=p?.workouts||[];if(show.competition)profile.competition=p?.competition||[];
    if(show.friends)profile.friends=(friends?.list||[]).filter(r=>r.status==='accepted'&&(r.from===id||r.to===id)).map(r=>r.from===id?r.to:r.from).map(uid=>(members.list||[]).find(m=>m.uid===uid&&m.socialAllowed===true)).filter(Boolean).map(m=>({uid:m.uid,username:m.username||'member',av:m.av||''}));
    return res.status(200).json({profile});
+  }
+  if(action==='profile-feed'){
+   const id=q.get('uid');if(!safeId(id)||(members.list||[]).find(m=>m.uid===id)?.socialAllowed!==true)return res.status(404).json({error:'Profile unavailable'});
+   const [projection,friends]=await Promise.all([doc(base+'profiles/'+id),doc(base+'friends')]);if(id!==user.id&&projection?.show?.workouts===false)return res.status(403).json({error:'Workouts hidden'});
+   let cursor;try{cursor=paging.cursor(q.get('cursor'));}catch(_){return res.status(400).json({error:'Invalid cursor'});}const canFriends=id===user.id||(friends?.list||[]).some(r=>r.status==='accepted'&&((r.from===id&&r.to===user.id)||(r.to===id&&r.from===user.id)));
+   const prefix=base+'feed/',month=cursor?.month||new Date().toISOString().slice(0,7),asOf=cursor?.asOf||Date.now();const names=await request('/rest/v1/docs?'+new URLSearchParams({select:'path',path:'like.'+prefix+'*',and:'(path.lte.'+prefix+month+')',order:'path.desc',limit:'4'}));const valid=names.filter(r=>/^\d{4}-(0[1-9]|1[0-2])$/.test(r.path.slice(prefix.length)));const posts=[];let next=null;
+   for(let i=0;i<Math.min(valid.length,3);i++){const ym=valid[i].path.slice(prefix.length),feed=await doc(valid[i].path);const items=(feed?.list||[]).filter(p=>p.uid===id&&p.audience!=='private'&&(p.audience!=='friends'||(canFriends&&(!p.sealed||p.sealed.keys?.[user.id]))));const page=paging.page(items,cursor&&ym===cursor.month?cursor.before:null,asOf,paging.size-posts.length);posts.push(...page.posts);if(page.more){next={month:ym,before:page.before,asOf};break;}next=i+1<valid.length?{month:valid[i+1].path.slice(prefix.length),before:null,asOf}:null;if(posts.length>=paging.size)break;}
+   return res.status(200).json({posts,next});
   }
   if(action==='leaderboard'){
    const month=new Date().toISOString().slice(0,7),previous=new Date(new Date().getUTCFullYear(),new Date().getUTCMonth()-1,1).toISOString().slice(0,7);const months=q.get('period')==='all'?[month,previous]:[month];

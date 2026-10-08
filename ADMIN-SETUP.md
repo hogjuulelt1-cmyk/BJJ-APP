@@ -66,3 +66,20 @@ current implementation as a complete security migration.
 The backend key is inherently powerful. Treat it as server-only and rotate it if
 it is ever exposed. Test files mock all users and writes; they do not alter live
 Supabase accounts, coach roles or payment records.
+
+## V10 account lifecycle and membership controls
+
+The complete registered-user directory, full KYC editor, password reset and permanent
+account deletion all require the server-only Supabase key described above. Existing
+passwords are hashes and cannot be viewed. Reset supplies a new password without
+placing it in audit entries. Account deletion requires typing DELETE, blocks the
+current admin and last coach, cleans private docs/public posts/relationships and
+anonymizes retained payment history. Multi-document cleanup can return a conflict;
+the account is only removed after shared cleanup succeeds. Retry after refreshing.
+
+Coaches can remove members through Members and restore them from Removed members.
+This only removes club membership; it preserves private accounts and training/payment
+history. An active coach role must be revoked before membership can be removed.
+The app checks removal markers before refreshing membership, preventing an old
+stored clubId from automatically adding the person back. Club public media/reviews
+use /api/club with canonical caller identity and club-role checks.

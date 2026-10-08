@@ -30,7 +30,13 @@ with sync_playwright() as p:
   if r.request.method=='POST':v=r.request.post_data_json;docs[v['path']]=v['data'];r.fulfill(status=201,body='');return
   rows=[{'path':k,'data':v,'updated_at':versions.get(k,'v1')} for k,v in docs.items() if (path.startswith('eq.') and k==path[3:]) or (path.startswith('like.') and fnmatch.fnmatchcase(k,path[5:]))];r.fulfill(json=rows)
  c.route('**/config.js',lambda r:r.fulfill(body='window.APP_CONFIG={supabaseUrl:"https://sb.fixture",supabaseAnonKey:"test",admins:["admin@example.com"]};',content_type='application/javascript'))
- c.route('https://sb.fixture/**',api);c.route('**/api/admin**',management);c.route('https://fonts.googleapis.com/**',lambda r:r.abort());c.route('https://fonts.gstatic.com/**',lambda r:r.abort())
+ c.route('https://sb.fixture/**',api);c.route('**/api/admin**',management);
+ def club_api(r):
+  data=r.request.post_data_json;doc=docs['club/test/members'];who=data['id'];target=next((m for m in doc['list'] if m['id']==who or m.get('uid')==who),None)
+  if data['action']=='member-remove':doc['list'].remove(target);doc.setdefault('removed',{})[target['uid']]={'member':target}
+  elif data['action']=='member-restore':doc['list'].append(doc['removed'].pop(who)['member'])
+  r.fulfill(json={'ok':True})
+ c.route('**/api/club',club_api);c.route('https://fonts.googleapis.com/**',lambda r:r.abort());c.route('https://fonts.gstatic.com/**',lambda r:r.abort())
  c.add_init_script('if(!localStorage.getItem("cb-sb-session")){localStorage.setItem("cb-sb-session",JSON.stringify({uid:"admin",email:"admin@example.com",access:"test",exp:Date.now()+3600000}));}localStorage.setItem("bjj-lang","en");')
  page=c.new_page();errors=[];page.on('pageerror',lambda e:errors.append(str(e)));page.goto('https://arrow.fixture/admin.html');page.wait_for_selector('[data-page="users"]')
  def nav(v):page.locator('[data-page="'+v+'"]').click();page.wait_for_timeout(150)
@@ -38,7 +44,9 @@ with sync_playwright() as p:
  def submit():page.locator('.modal button[type="submit"]').click();page.wait_for_timeout(250)
  nav('users');assert 'free@example.com' in page.locator('main').inner_text();assert '10/1/2026' in page.locator('main').inner_text();assert page.locator('[data-act="users-page"][data-v="1"]').is_disabled()
  action('account-edit');assert page.locator('.modal [name="address"]').input_value()=='Баянгол';page.locator('.modal [name="name"]').fill('Болд');submit();assert users[0]['name']=='Болд';assert page.locator('.modal').count()==0
+ assert page.locator('[data-act="account-password"]').count()==2;action('account-password');page.locator('.modal [name="password"]').fill('New-password123');page.locator('.modal [name="confirmPassword"]').fill('New-password123');submit();assert any(a=='user-password' for a,d in calls);action('account-delete');assert page.locator('.modal [name="confirmation"]').count()==1;page.keyboard.press('Escape');
  action('account-link');submit();assert any(x['uid']=='free' for x in docs['club/test/members']['list'])
+ nav('members');assert page.locator('aside .admin-back').count()==1;action('member-remove','[data-id="p"]');page.locator('.modal [name="confirm"]').check();submit();assert not any(m.get('uid')=='peer' for m in docs['club/test/members']['list']);page.locator('details summary').click();action('member-restore','[data-id="peer"]');assert any(m.get('uid')=='peer' for m in docs['club/test/members']['list']);
  nav('clubs');assert page.locator('details').count()==1;assert not page.locator('code').first.is_visible();action('club-edit');page.locator('.modal [name="n"]').fill('Arrow Test');page.locator('.modal [name="kidsMonth"]').fill('65000');submit();assert docs['club/test/profile']['n']=='Arrow Test';assert docs['club/test/profile']['fee']['kidsMonth']==65000;assert docs['club/test/profile']['code']=='CODE';assert docs['club/test/profile']['schedule']
  action('coaches');page.locator('.modal [name="uid"]').select_option('peer');page.locator('.modal [name="confirm"]').check();submit();assert 'peer' in docs['club/test/profile']['admins']
  action('coaches');page.locator('.modal [name="grant"]').select_option('0');page.locator('.modal [name="uid"]').select_option('coach');page.locator('.modal [name="confirm"]').check();submit();assert docs['club/test/profile']['admins']==['peer']

@@ -57,7 +57,7 @@ with sync_playwright() as p:
  page.screenshot(path='/tmp/arrow-v4-start.png',full_page=False)
  page.locator('[data-act="sheet-save"]').click();page.locator('[data-act="live-finish"]').click()
  assert page.locator('.training-option[data-v="comp"]').get_attribute('aria-checked')=='true'
- page.locator('[data-act="duration-preset"][data-min="45"]').click();page.locator('[data-act="session-step"][data-target="f-min"][data-step="5"]').click();assert page.locator('#f-min').input_value()=='50'
+ page.locator('[data-act="duration-preset"][data-min="45"]').click();page.locator('#duration-minutes').fill('50');assert page.locator('#f-min').input_value()=='50'
  page.locator('[data-act="session-count"][data-k="subs"][data-step="1"]').click();page.locator('[data-act="session-count"][data-k="subs"][data-step="1"]').click();assert page.locator('#finish-count-subs').inner_text()=='2'
  page.locator('#f-effort').fill('4');page.locator('#f-effort').dispatch_event('input');page.locator('[data-act="pick"][data-group="audience"][data-v="private"]').click()
  assert page.evaluate('document.documentElement.scrollWidth<=innerWidth')

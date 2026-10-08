@@ -27,6 +27,7 @@ module.exports=async function admin(req,res){
   if(version){const found=await request('/rest/v1/docs?'+new URLSearchParams({path:'eq.'+path,updated_at:'eq.'+version}),{method:'PATCH',headers:{'Content-Type':'application/json',Prefer:'return=representation'},body:JSON.stringify({data,updated_at:new Date().toISOString()})});if(!found.length)throw fail(409,'Өөрчлөлт давхцлаа. Шинэчлээд дахин оролдоно уу.');}
   else await request('/rest/v1/docs',{method:'POST',headers:{'Content-Type':'application/json',Prefer:'return=minimal'},body:JSON.stringify({path,data,owner:actor.id,updated_at:new Date().toISOString()})});
  }
+ async function removeRow(r){const removed=await request('/rest/v1/docs?'+new URLSearchParams({path:'eq.'+r.path,updated_at:'eq.'+r.updated_at}),{method:'DELETE',headers:{Prefer:'return=representation'}});if(!removed?.length)throw fail(409,'Өөрчлөлт давхцлаа. Шинэчлээд дахин оролдоно уу.');}
  let actor;
  try{
   actor=await request('/auth/v1/user',{},anon);
@@ -45,7 +46,7 @@ module.exports=async function admin(req,res){
   }
   if(action==='user'&&req.method==='GET'){
    requireSecret();const id=q.get('id');if(!safeId(id))throw fail(400,'Invalid user');const [raw,settings]=await Promise.all([request('/auth/v1/admin/users/'+id),row('bjj/u/'+id+'/settings')]);const user=raw.user||raw;const profile={};for(const k of PROFILE_FIELDS)profile[k]=settings.data?.[k]||user.user_metadata?.[k]||'';
-   return res.status(200).json({id,email:user.email||'',profile,version:settings.updated_at,createdAt:user.created_at,lastSignIn:user.last_sign_in_at});
+   return res.status(200).json({id,email:user.email||'',profile,avatar:settings.data?.avatar||'',onboardingComplete:!!settings.data?.onboardingComplete,confirmed:!!user.email_confirmed_at,version:settings.updated_at,createdAt:user.created_at,lastSignIn:user.last_sign_in_at,passwordReadable:false});
   }
   if(action==='audit'&&req.method==='GET'){
    const path=secret?'bjj/u/*/admin-audit/*':'bjj/u/'+actor.id+'/admin-audit/*';const data=await request('/rest/v1/docs?'+new URLSearchParams({select:'data',path:'like.'+path,order:'updated_at.desc',limit:'100'}));return res.status(200).json({list:data.map(x=>x.data),scope:secret?'all':'own'});
@@ -60,7 +61,7 @@ module.exports=async function admin(req,res){
     const month=Number(p.month),kidsMonth=Number(p.kidsMonth),drop=Number(p.drop);if([month,kidsMonth,drop].some(x=>!Number.isFinite(x)||x<0||x>100000000))throw fail(400,'Төлбөрийн дүн буруу байна.');c.fee={...c.fee,month,kidsMonth,drop};c.pay={...c.pay};for(const k of ['bank','account','holder','qpay','note'])c.pay[k]=clean(p[k],k==='note'?1000:200);
     // Revision-check index before any write; profile contains the full authoritative record.
     const index=await row('clubs/index');await put(path,c,current.updated_at);
-    const idx=index.data||{list:[]};idx.list=(idx.list||[]).filter(x=>x.id!==body.club);if(c.status!=='rejected')idx.list.push({id:body.club,n:c.n,city:c.city,status:c.status,open:c.open});
+    const idx=index.data||{list:[]};idx.list=(idx.list||[]).filter(x=>x.id!==body.club);if(c.status!=='rejected')idx.list.push({id:body.club,n:c.n,city:c.city,logo:c.logo||'',status:c.status,open:c.open});
     try{await put('clubs/index',idx,index.updated_at);}catch(_){warnings.push('Клуб хадгалагдсан. Клубийн жагсаалтыг шинэчлэхийн тулд дахин хадгална уу.');}
    }else{
     if(!safeId(body.uid)||typeof body.grant!=='boolean')throw fail(400,'Invalid coach');c.admins=[...new Set(c.admins||[])];
@@ -76,6 +77,32 @@ module.exports=async function admin(req,res){
    }
    const logged=await audit(body.club,{user:action==='coach-change'?body.uid:undefined,grant:action==='coach-change'?body.grant:undefined});if(!logged)warnings.push('Өөрчлөлт хадгалагдсан ч түүх бүртгэгдсэнгүй.');return res.status(200).json({ok:true,warnings});
   }
+  if(action==='user-password'){
+   requireSecret();if(!safeId(body.id)||typeof body.password!=='string'||body.password.length<8||body.password.length>128)throw fail(400,'Нууц үг 8–128 тэмдэгт байна.');
+   await request('/auth/v1/admin/users/'+body.id,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({password:body.password})});return res.status(200).json({ok:true,warnings:await audit(body.id)?[]:['Нууц үг шинэчлэгдсэн ч түүх бүртгэгдсэнгүй.']});
+  }
+  if(action==='user-delete'){
+   requireSecret();if(!safeId(body.id)||body.confirmation!=='DELETE')throw fail(400,'Устгалтыг баталгаажуулна уу.');if(body.id===actor.id)throw fail(400,'Өөрийн админ бүртгэлийг устгах боломжгүй.');
+   const raw=await request('/auth/v1/admin/users/'+body.id),user=raw.user||raw;if(allowed.includes(String(user.email||'').toLowerCase()))throw fail(400,'Админы эрхийг эхлээд тохиргооноос хасна уу.');
+   const profiles=await rows('club/*/profile');for(const r of profiles)if((r.data.admins||[]).includes(body.id)&&r.data.admins.length<=1)throw fail(400,'Сүүлчийн коучийн бүртгэл байна. Эхлээд өөр коуч нэмнэ үү.');
+   // Remove club roles with optimistic checks before deleting the account; never orphan a club.
+   for(const r of profiles)if((r.data.admins||[]).includes(body.id)){const c={...r.data,admins:r.data.admins.filter(id=>id!==body.id),ageKeys:{...r.data.ageKeys}};delete c.ageKeys[body.id];await put(r.path,c,r.updated_at);}
+   const shared=await rows('club/*');
+   for(const r of shared){const kind=r.path.split('/')[2],key=r.path.split('/')[3];let data=structuredClone(r.data),changed=false;
+    if((kind==='profiles'||kind==='reviews')&&key===body.id){await removeRow(r);continue;}
+    if(kind==='members'){data.list=(data.list||[]).filter(m=>m.uid!==body.id);if(data.removed)delete data.removed[body.id];for(const m of data.list){if(m.ageSealed)delete m.ageSealed[body.id];if(m.privateProfile?.keys)delete m.privateProfile.keys[body.id];}changed=true;}
+    if(kind==='friends'){data.list=(data.list||[]).filter(x=>x.from!==body.id&&x.to!==body.id);changed=true;}
+    if(kind==='feed'){data.list=(data.list||[]).filter(x=>x.uid!==body.id);for(const post of data.list){if(post.kudos)post.kudos=post.kudos.filter(id=>id!==body.id);if(post.sealed?.keys)delete post.sealed.keys[body.id];}changed=true;}
+    if(kind==='rolls'){data.list=(data.list||[]).filter(x=>x.a!==body.id&&x.b!==body.id);changed=true;}
+    if(kind==='results'){data.list=(data.list||[]).filter(x=>x.uid!==body.id);changed=true;}
+    if(kind==='att'){for(const d in data.days||{})data.days[d]=data.days[d].filter(id=>id!==body.id);changed=true;}
+    if(kind==='partner-sessions'){if(data.owner===body.id){await removeRow(r);continue;}data.participants=(data.participants||[]).filter(id=>id!==body.id);changed=true;}
+    if(kind==='pay'&&key===body.id){data.items=(data.items||[]).map(x=>({...x,note:'',n:'Deleted member',email:'',by:x.by===body.id?'deleted':x.by}));changed=true;}
+    if(changed&&JSON.stringify(data)!==JSON.stringify(r.data))await put(r.path,data,r.updated_at);
+   }
+   for(const path of ['app/pro','app/upgrades']){const r=await row(path);if(!r.data)continue;const data=structuredClone(r.data);if(path==='app/pro')delete data.u?.[body.id];else data.list=(data.list||[]).filter(x=>x.uid!==body.id);await put(path,data,r.updated_at);}
+   await request('/rest/v1/docs?'+new URLSearchParams({path:'like.bjj/u/'+body.id+'/*'}),{method:'DELETE'});await request('/auth/v1/admin/users/'+body.id,{method:'DELETE'});return res.status(200).json({ok:true,warnings:await audit(body.id)?[]:['Бүртгэл устсан ч түүх бүртгэгдсэнгүй.']});
+  }
   if(action==='user-link'){
    requireSecret();if(!safeId(body.id)||!safeId(body.club))throw fail(400,'Invalid member');const [raw,settings,club,roster,all]=await Promise.all([request('/auth/v1/admin/users/'+body.id),row('bjj/u/'+body.id+'/settings'),row('club/'+body.club+'/profile'),row('club/'+body.club+'/members'),rows('club/*/members')]);
    if(!club.data||club.data.status==='rejected')throw fail(400,'Идэвхтэй клуб сонгоно уу.');if(all.some(r=>r.path!=='club/'+body.club+'/members'&&(r.data.list||[]).some(m=>m.uid===body.id)))throw fail(409,'Хэрэглэгч өөр клубт бүртгэлтэй байна. Клуб шилжүүлэхэд одоогийн коучтай тохиролцоно уу.');
@@ -83,14 +110,14 @@ module.exports=async function admin(req,res){
    const data={...settings.data,clubId:body.club};if(settings.updated_at)await put('bjj/u/'+body.id+'/settings',data,settings.updated_at);else await request('/rest/v1/docs',{method:'POST',headers:{'Content-Type':'application/json',Prefer:'return=minimal'},body:JSON.stringify({path:'bjj/u/'+body.id+'/settings',data,owner:body.id})});return res.status(200).json({ok:true,warnings:await audit(body.id)?[]:['Гишүүн нэмэгдсэн ч түүх бүртгэгдсэнгүй.']});
   }
   if(action==='user-update'){
-   requireSecret();if(!safeId(body.id))throw fail(400,'Invalid user');const p=body.profile||{};if(!clean(p.name)||!A.validUsername(p.username)||A.age(p.birthDate)===null)throw fail(400,'Нэр, username, төрсөн огноог шалгана уу.');
+   requireSecret();if(!safeId(body.id))throw fail(400,'Invalid user');const p=body.profile||{};if(!clean(p.name)||!A.validUsername(p.username)||(p.birthDate&&A.age(p.birthDate)===null))throw fail(400,'Нэр, username, төрсөн огноог шалгана уу.');
    const path='bjj/u/'+body.id+'/settings',cur=await row(path);if((cur.updated_at||null)!==(body.version||null))throw fail(409,'Хэрэглэгчийн мэдээлэл шинэчлэгдсэн. Дахин нээнэ үү.');
    const settings=cur.data||{};for(const k of PROFILE_FIELDS)settings[k]=clean(p[k],k==='address'?1000:k==='bio'?300:200);settings.username=A.username(p.username);
    // Preserve owner on existing private documents. Missing private docs belong to the target.
    if(cur.updated_at)await put(path,settings,cur.updated_at);else await request('/rest/v1/docs',{method:'POST',headers:{'Content-Type':'application/json',Prefer:'return=minimal'},body:JSON.stringify({path,data:settings,owner:body.id,updated_at:new Date().toISOString()})});
    const warnings=[];try{await request('/auth/v1/admin/users/'+body.id,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({user_metadata:{name:settings.name,username:settings.username,birthDate:settings.birthDate}})});}catch(_){warnings.push('Профайл хадгалагдсан. Нэвтрэх бүртгэлийн мэдээллийг дахин шинэчлэх шаардлагатай.');}
    const [rosters,profiles]=await Promise.all([rows('club/*/members'),rows('club/*/profile')]);const clubs=new Map(profiles.map(x=>[x.path.split('/')[1],x.data]));
-   for(const roster of rosters){const m=(roster.data.list||[]).find(x=>x.uid===body.id);if(!m)continue;try{const c=clubs.get(roster.path.split('/')[1])||{};m.n=settings.name;m.username=settings.username;m.track=A.age(settings.birthDate)<16?'kids':'adult';m.socialAllowed=A.age(settings.birthDate)>=13;m.coachSet=true;m.setBy=actor.id;const keys={};m.ageSealed={};for(const coach of c.admins||[]){if(c.ageKeys?.[coach]){keys[coach]=c.ageKeys[coach];m.ageSealed[coach]=await A.sealAge(settings.birthDate,keys[coach]);}}m.privateProfile=await A.sealPayload({phone:settings.phone,address:settings.address,social:settings.socialAddress},keys);await put(roster.path,roster.data,roster.updated_at);}catch(_){warnings.push('Профайл хадгалагдсан. '+roster.path.split('/')[1]+' клубийн мэдээллийг дахин шинэчлэх шаардлагатай.');}}
+   for(const roster of rosters){const m=(roster.data.list||[]).find(x=>x.uid===body.id);if(!m)continue;try{const c=clubs.get(roster.path.split('/')[1])||{};m.n=settings.name;m.username=settings.username;const age=A.age(settings.birthDate);m.track=age!==null?(age<16?'kids':'adult'):(m.track||'adult');m.socialAllowed=age!==null&&age>=13;m.coachSet=true;m.setBy=actor.id;const keys={};m.ageSealed={};for(const coach of c.admins||[]){if(c.ageKeys?.[coach]){keys[coach]=c.ageKeys[coach];if(age!==null)m.ageSealed[coach]=await A.sealAge(settings.birthDate,keys[coach]);}}m.privateProfile=await A.sealPayload({phone:settings.phone,address:settings.address,social:settings.socialAddress},keys);await put(roster.path,roster.data,roster.updated_at);}catch(_){warnings.push('Профайл хадгалагдсан. '+roster.path.split('/')[1]+' клубийн мэдээллийг дахин шинэчлэх шаардлагатай.');}}
    if(!await audit(body.id))warnings.push('Өөрчлөлтийн түүх бүртгэгдсэнгүй.');return res.status(200).json({ok:true,warnings});
   }
   throw fail(400,'Unknown action');
