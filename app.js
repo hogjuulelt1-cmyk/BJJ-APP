@@ -141,7 +141,7 @@ function flush(key) {
 }
 
 async function startCloud() {
-  const stopProgress=window.ARROW_UI.slot($("main"));
+  const stopProgress=()=>{};
   try {
     let rows = await SB.list(NS()); let legacy = false;
     if (!rows.length) { const old = await SB.list("bjj/"); rows = old.filter((r) => KEYS.includes(r.path.slice(4))).map((r) => ({ path: NS() + r.path.slice(4), data: r.data })); legacy = rows.length > 0; }
@@ -155,7 +155,7 @@ async function startCloud() {
     if (S.settings.lastAdded) { toast(S.settings.lastAdded + " new moves added to the library"); delete S.settings.lastAdded; }
     joinPending();
     document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible" && !Object.keys(dirty).length) refresh(); });
-  } catch (e) { if (e.message === "noauth") showLogin(); else { setSync("err", "Could not connect"); console.error(e); } } finally {stopProgress();}
+  } catch (e) { if (e.message === "noauth") showLogin(); else { $("boot-splash")?.remove(); $("main").innerHTML=shimmer("feed")+'<button class="btn wide" data-act="boot-retry">Try again</button>'; setSync("err", "Could not connect"); console.error(e); } } finally {stopProgress();}
 }
 async function refresh() {
   try { const rows = await SB.list(NS()); let ch = false; for (const r of rows) { const k = r.path.slice(NS().length); if (KEYS.includes(k) && !dirty[k] && JSON.stringify(S[k]) !== JSON.stringify(r.data)) { S[k] = r.data; ch = true; } } if (ch) { normalize(); render(); } } catch (e) {}
@@ -203,29 +203,34 @@ function checkinSheet(auto) {
     (inClub ? (attDays(CLUB.attMonth, myUid()).includes(today) ? '<p class="tip good">You are already checked in for today.</p>' : "") + field("ci-code", "Or type the club code", inp("ci-code", "", "text", 'autocapitalize="characters" autocomplete="off" maxlength="8" placeholder="6 characters"')) : '<p class="small">Not in a club yet? The QR at your club\'s door signs you up too.</p><button class="btn ghost wide" data-act="tab" data-v="club">Find my club</button>');
   if (!("BarcodeDetector" in window) && typeof jsQR !== "function" && !SCAN_LIB.p && canScan()) SCAN_LIB.p = loadScript("vendor/jsQR.js?v=1").catch(() => { SCAN_LIB.p = null; });
   openSheet("Check in", b, inClub ? { saveLabel: "Check in", async onSave() { const t = sv("ci-code").trim().toUpperCase(); if (!t) { $("ci-code").focus(); return false; } return await checkinWith(t); } } : {});
-  if (auto && canScan()) scanStart();
+  if (auto && canScan()) cameraGranted().then(granted=>{if(granted && $("scan-v"))scanStart();});
 }
 function loadScript(src) { return new Promise((res, rej) => { const e = document.createElement("script"); e.src = src; e.onload = res; e.onerror = rej; document.head.appendChild(e); }); }
 async function scanStart() {
-  const v = $("scan-v"); if (!v || SCAN) return; const msg = $("scan-msg");
+  const v = $("scan-v"); if (!v || SCAN || v.dataset.starting) return; v.dataset.starting="1"; const msg = $("scan-msg");
   try {
     const need = !("BarcodeDetector" in window) && typeof jsQR !== "function"; const lib = need ? (SCAN_LIB.p || (SCAN_LIB.p = loadScript("vendor/jsQR.js?v=1"))) : null;
-    const st = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment", width: { ideal: 1280 }, height: { ideal: 1280 } } }); v.srcObject = st; await v.play();
+    const st = await acquireCamera(); if (document.visibilityState!=="visible" || !v.isConnected || !$("sheet").classList.contains("open")) { releaseCamera(); return; } st.getTracks().forEach(t=>t.enabled=true); v.srcObject = st; await v.play();
     if (lib) { if (msg) msg.textContent = tr(""); await lib; } $("scan-box").classList.add("on"); if (msg) msg.textContent = tr("Point the camera at the club QR at the door.");
     SCAN = { st, det: "BarcodeDetector" in window ? new BarcodeDetector({ formats: ["qr_code"] }) : null, on: true }; scanLoop();
-  } catch (e) { if (msg) msg.textContent = tr("Camera not available") + ". " + tr("Allow the camera in the browser settings, or type the code."); else toast("Camera not available"); }
+  } catch (e) { if (msg) msg.textContent = tr("Camera not available") + ". " + tr("Allow the camera in the browser settings, or type the code."); else toast("Camera not available"); releaseCamera(); } finally {delete v.dataset.starting;}
 }
-async function scanLoop() {
-  if (!SCAN || !SCAN.on) return; const v = $("scan-v"); if (!v || !v.isConnected) { scanStop(); return; }
+async function scanLoop(scan=SCAN) {
+  if (!scan || scan!==SCAN || !scan.on) return; const v = $("scan-v"); if (!v || !v.isConnected) { scanStop(); return; }
   try {
     let raw = "";
     if (SCAN.det) { const codes = await SCAN.det.detect(v); const c = codes.find((x) => x.rawValue); raw = c ? c.rawValue : ""; }
     else if (v.videoWidth) { const cv = SCAN.cv || (SCAN.cv = document.createElement("canvas")); const w = Math.min(640, v.videoWidth), h = Math.round((w * v.videoHeight) / v.videoWidth); cv.width = w; cv.height = h; const g = cv.getContext("2d", { willReadFrequently: true }); g.drawImage(v, 0, 0, w, h); const im = g.getImageData(0, 0, w, h); const r = jsQR(im.data, w, h, { inversionAttempts: "dontInvert" }); raw = r && r.data || ""; }
-    if (raw) { scanStop(); handleScan(raw); return; }
+    if (SCAN!==scan || !scan.on) return; if (raw) { scanStop(); handleScan(raw); return; }
   } catch (e) {}
-  setTimeout(scanLoop, 200);
+  setTimeout(()=>scanLoop(scan), 200);
 }
-function scanStop() { if (SCAN) { SCAN.on = false; SCAN.st.getTracks().forEach((t) => t.stop()); SCAN = null; } }
+const CAMERA={stream:null,pending:null,timer:null};
+async function cameraGranted(){if(CAMERA.stream?.getTracks().some(t=>t.readyState==='live'))return true;try{return (await navigator.permissions.query({name:'camera'})).state==='granted';}catch(_){return false;}}
+async function acquireCamera(){clearTimeout(CAMERA.timer);if(CAMERA.stream?.getTracks().some(t=>t.readyState==='live'))return CAMERA.stream;if(!CAMERA.pending)CAMERA.pending=navigator.mediaDevices.getUserMedia({video:{facingMode:'environment',width:{ideal:1280},height:{ideal:1280}}}).then(st=>CAMERA.stream=st).finally(()=>CAMERA.pending=null);return CAMERA.pending;}
+function releaseCamera(){clearTimeout(CAMERA.timer);CAMERA.stream?.getTracks().forEach(t=>t.stop());CAMERA.stream=null;}
+function scanStop(){if(SCAN){SCAN.on=false;SCAN=null;}const video=$('scan-v');if(video){video.pause();video.srcObject=null;}CAMERA.stream?.getTracks().forEach(t=>t.enabled=false);clearTimeout(CAMERA.timer);CAMERA.timer=setTimeout(releaseCamera,30000);}
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='hidden'){scanStop();releaseCamera();}});window.addEventListener('pagehide',()=>{scanStop();releaseCamera();});
 function handleScan(url) { let j = null; try { j = parseJoinParams(new URL(url, location.href).searchParams); } catch (e) {} if (!j) { toast("Not a club QR"); const m = $("scan-msg"); if (m) m.textContent = tr("Not a club QR"); setTimeout(() => { if (UI.sheet && $("scan-v")) scanStart(); }, 1200); return; } try { localStorage.setItem("bjj-join", JSON.stringify(j)); } catch (e) {} closeSheet(); joinPending(); }
 function appBase() { return location.origin + location.pathname.replace(/index\.html$/, ""); }
 function checkinLink() { return appBase() + "?checkin=" + encodeURIComponent(CLUB.id) + "&c=" + encodeURIComponent((CLUB.profile && CLUB.profile.code) || ""); }
@@ -263,6 +268,7 @@ function startLocal() {
 function buttonBusy(button,busy){window.ARROW_UI.busy(button,busy);}
 function rememberLogin(login) { try { const remember = !$('lg-remember') || $('lg-remember').checked; localStorage.setItem('arrow-remember',remember?'1':'0'); if (remember) localStorage.setItem('arrow-login',login); else localStorage.removeItem('arrow-login'); } catch(e) {} }
 function showLogin(msg, signup) {
+  $("boot-splash")?.remove();
   document.body.classList.add('locked'); $('tabs').innerHTML = ''; $('belt').innerHTML = '';
   let remembered=''; try { remembered=localStorage.getItem('arrow-login')||''; } catch(e) {}
   $('main').innerHTML = '<form class="card auth-card" id="login"><span class="eyebrow">ARROW JIU-JITSU</span><h2>'+(signup?'Create your account':'Sign in')+'</h2>'+joinBanner()+(msg?'<p role="alert" class="auth-message">'+esc(msg)+'</p>':'')+
@@ -286,7 +292,7 @@ function recoverySheet(kind) {
     const r=await fetch(SB.url+'/auth/v1/recover?redirect_to='+encodeURIComponent(location.origin+location.pathname),{method:'POST',headers:{apikey:SB.key,'Content-Type':'application/json'},body:JSON.stringify({email})});if(!r.ok)throw Error('Сэргээх холбоос илгээж чадсангүй. Дахин оролдоно уу.');$('recovery-result').textContent='Энэ имэйлтэй эрх байвал сэргээх холбоос очно. Имэйлээ шалгана уу.';return false;}});
 }
 async function resetPasswordFromLink() {
-  const params=new URLSearchParams(location.hash.slice(1));if(params.get('type')!=='recovery')return false;
+  const params=new URLSearchParams(location.hash.slice(1));if(params.get('type')!=='recovery')return false;$('boot-splash')?.remove();
   const access=params.get('access_token'),refresh=params.get('refresh_token');history.replaceState(null,'',location.pathname+location.search);
   if(!access||!refresh){showLogin('Сэргээх холбоос хүчингүй байна. Шинэ холбоос авна уу.');return true;}
   document.body.classList.add('locked');$('main').innerHTML='<form id="reset-password" class="card auth-card"><h2>Шинэ нууц үг</h2>'+field('reset-new','Password',inp('reset-new','','password','required minlength="8" autocomplete="new-password"'))+field('reset-confirm','Confirm password',inp('reset-confirm','','password','required minlength="8" autocomplete="new-password"'))+'<button class="btn wide">Save password</button><p role="status" id="reset-result"></p></form>';
@@ -1210,15 +1216,15 @@ function sessSheet(id, prefill) {
   return b; };
   openSheet(s ? "Edit training" : fromLive ? "Finish training" : "Log training", body, {
     saveLabel: "Save session", state: { picks: { type: f.type || "gi", rpe: f.rpe ? +f.rpe : 0, audience: f.audience || "public" }, with: clone(f.with || []), pk: { tech: clone(f.tech || []), subs: clone(f.subs || []), taps: clone(f.taps || []) } },
-    onSave() {
+    async onSave() {
       const d = sv("f-d"); if (!d || d > todayIso()) { toast("Check the date"); return false; }
       const min = +sv("f-min"); if (!Number.isFinite(min) || min <= 0 || min > 1440) { $("f-min").focus(); return false; }
-      const rec = s || { id: uid() }; const old = s ? s.d : "";
+      const rec = s || S.log.items.find(x=>x.id===UI.sheet.savedId) || { id: uid() }; const old = s ? s.d : "";
       rec.d = d; rec.min = min; rec.type = pickVal("type", "gi"); rec.rolls = Math.min(999,Math.max(0,Math.round(+sv("f-rolls") || 0))); rec.rpe = pickVal("rpe", 0);
       rec.tech = UI.sheet.pk.tech || []; rec.subs = UI.sheet.pk.subs || []; rec.taps = UI.sheet.pk.taps || [];
       rec.audience = socialOn() ? pickVal("audience", "public") : "private";
       rec.good = sv("f-good").trim(); rec.bad = sv("f-bad").trim(); rec.note = sv("f-note").trim(); rec.with = (UI.sheet.with || []).slice();
-      if (!s) S.log.items.push(rec); save("log"); if (fromLive) liveClear(); if (CLUB.id) { rollsShare(rec); feedPost(rec,old).catch(()=>toast("Could not publish the session")); } toast("Training saved"); render(); setTimeout(() => shareSheet(rec.id, fromLive ? "story" : null), 450); return true;
+      if (!S.log.items.includes(rec)) S.log.items.push(rec); UI.sheet.savedId=rec.id; save("log"); await flush("log"); if (fromLive) liveClear(); if (CLUB.id) { await feedPost(rec,old); await rollsShare(rec); } toast("Training saved"); render(); return true;
     },
     onDelete: s ? () => { S.log.items = S.log.items.filter((x) => x.id !== s.id); save("log"); feedRemove(s.id, s.d); toast("Deleted"); render(); return true; } : null,
   });
@@ -1706,7 +1712,7 @@ function weekCard() {
 const LIVE = { tick: null };
 function liveOn() { const l = S.settings.live; return l && l.t0 ? l : null; }
 function liveClear() { S.settings.live = null; save("settings"); }
-function liveElapsed() { const l = liveOn(); return l ? Math.max(0, Math.floor((Date.now() - l.t0) / 1000)) : 0; }
+function liveElapsed() { const l = liveOn(); return l ? Math.max(0, Math.floor(((l.stoppedAt||Date.now()) - l.t0) / 1000)) : 0; }
 function liveTick() { const el = $("live-time"); if (!el || !liveOn()) { clearInterval(LIVE.tick); LIVE.tick = null; return; } el.textContent = fmtT(liveElapsed()); }
 function fmtClock(ms) { const d = new Date(ms); return pad(d.getHours()) + ":" + pad(d.getMinutes()); }
 function liveNames(list) { const out = []; for (const n of list || []) { const ex = out.find((x) => x.n === n); if (ex) ex.c++; else out.push({ n, c: 1 }); } return out; }
@@ -1747,10 +1753,10 @@ function livePickSheet(key) {
 }
 function liveFinish() {
   const l = liveOn(); if (!l) return;
-  const min = Math.max(5, Math.ceil(liveElapsed() / 300) * 5);
+  l.stoppedAt=l.stoppedAt||Date.now();const stoppedAt=l.stoppedAt, elapsedSeconds=Math.max(1,Math.round(liveElapsed())), min=+(elapsedSeconds/60).toFixed(2);
   const idOf = (n) => { const q = n.toLowerCase(); const m = nodes().find((x) => x.k === "mv" && x.n.toLowerCase() === q); return m ? m.id : ""; };
   const toPk = (names) => liveNames(names).map((x) => ({ id: idOf(x.n), n: x.n, c: x.c }));
-  sessSheet(null, { live: true, d: todayIso(), min, type: l.type, rolls: +l.rolls || 0, tech: toPk(l.tech), subs: toPk(l.subs), taps: toPk(l.taps), good: l.good || "", with: (l.with || []).slice() });
+  sessSheet(null, { live: true, startedAt:l.t0, stoppedAt, elapsedSeconds, stoppedDuration:+(elapsedSeconds/60).toFixed(2), d: todayIso(), min, type: l.type, rolls: +l.rolls || 0, tech: toPk(l.tech), subs: toPk(l.subs), taps: toPk(l.taps), good: l.good || "", with: (l.with || []).slice() });
 }
 const FEED_TITLE = { gi: "Gi training", nogi: "No-gi training", open: "Open mat", priv: "Private lesson", drill: "Drilling session", comp: "Competition day" };
 function feedCard(p) {
@@ -2020,8 +2026,8 @@ function vClubToday(P, adm) {
 }
 /* who rolled with whom: club/<id>/rolls/<yyyy-mm> = { list: [{ d, a, b }] } */
 async function rollsShare(rec) {
-  if (!rec.with || !rec.with.length) return; const ym = rec.d.slice(0, 7); const doc = (await cget("club/" + CLUB.id + "/rolls/" + ym)) || { list: [] }; const me = myUid();
-  doc.list = doc.list.filter((x) => !(x.sid === rec.id)); for (const w of rec.with) doc.list.push({ sid: rec.id, d: rec.d, a: me, b: w }); await cset("club/" + CLUB.id + "/rolls/" + ym, doc); if (ym === thisMonth()) CLUB.rolls = doc;
+  if (!CLUB.id) return; const ym = rec.d.slice(0, 7); const doc = (await cget("club/" + CLUB.id + "/rolls/" + ym)) || { list: [] }; const me = myUid();
+  doc.list = doc.list.filter((x) => !(x.sid === rec.id && x.a === me)); for (const w of rec.with || []) doc.list.push({ sid: rec.id, d: rec.d, a: me, b: w }); await cset("club/" + CLUB.id + "/rolls/" + ym, doc); if (ym === thisMonth()) CLUB.rolls = doc;
 }
 function partnerStats() {
   const me = myUid(); const mine = {}; for (const s of S.log.items) for (const w of s.with || []) mine[w] = (mine[w] || 0) + 1;
@@ -2206,7 +2212,7 @@ document.addEventListener("click", async (e) => {
     case "avatar-rm": if (UI.sheet) { UI.sheet.photoVersion = (UI.sheet.photoVersion || 0) + 1; UI.sheet.photoLoading = false; UI.sheet.av = ""; const crop = $("pf-crop"); if (crop) crop.replaceChildren(); avatarPreview(); } break;
     case "menu": menuSheet(); break;
     case "profile": if (UI.sheet) closeSheet(); if (UI.tab !== "profile") { UI.prevTab = UI.tab; UI.tab = "profile"; go("enter-l"); } break;
-    case "profile-back": UI.tab = UI.prevTab && VIEWS[UI.prevTab] && UI.prevTab !== "profile" ? UI.prevTab : "home"; UI.prevTab = null; go("enter-r"); break;
+    case "profile-back": UI.tab = UI.prevTab && VIEWS[UI.prevTab] && UI.prevTab !== UI.tab ? UI.prevTab : "home"; UI.prevTab = null; go("enter-r"); break;
     case "profile-edit": profileEditSheet(); break;
     case "member-profile": if (UI.sheet) closeSheet(); if (!ds.uid || ds.uid === myUid()) { if (UI.tab !== "profile") { UI.prevTab = UI.tab; UI.tab = "profile"; go("enter-l"); } } else profileSheet(ds.uid); break;
     case "menu-go": closeSheet(); if (ds.v === "prog") { UI.tab = "me"; UI.seg.me = "prog"; } else if (ds.v === "club") UI.tab = "club"; else if (ds.v === "map") { UI.tab = "tech"; UI.tech.q = ""; UI.tech.view = "pos"; UI.setupEd = null; UI.tech.map = true; if (!(UI.tech.id && node(UI.tech.id))) UI.tech.id = (positions()[0] || {}).id || null; try { localStorage.setItem("bjj-map", "1"); } catch (x) {} } else if (ds.v === "belt") { UI.tab = "me"; UI.seg.me = "belt"; UI.beltPage = true; } try { localStorage.setItem("bjj-tab", UI.tab); } catch (x) {} go("enter"); break;
@@ -2730,6 +2736,92 @@ async function attendanceSheet(date,manage) {
  }catch(e){toast('Could not load attendance');}
 }
 document.addEventListener('click',e=>{const b=e.target.closest('[data-act="attendance-open"]');if(b)attendanceSheet(b.dataset.date);});
+
+/* Arrow community and mobile navigation refresh. */
+const COMMUNITY={profiles:new Map(),lead:new Map(),partners:[],partnerNext:null,partnerBusy:false,partnerLoaded:false,club:null};
+function shimmer(kind){const bar=(w='100%')=>'<span class="skeleton-line" style="width:'+w+'"></span>';return '<div class="layout-skeleton" role="status" aria-label="'+esc(tr('Loading content'))+'">'+(kind==='profile'?'<div class="card skeleton-profile"><span class="skeleton-circle"></span>'+bar('45%')+bar('65%')+'</div>':'')+(kind==='score'?[0]:[0,1,2]).map(()=>'<div class="card skeleton-card"><div class="skeleton-row"><span class="skeleton-circle"></span><div>'+bar('60%')+bar('35%')+'</div></div>'+bar()+bar('80%')+'<div class="skeleton-stats">'+bar()+bar()+bar()+'</div></div>').join('')+'</div>';}
+function communityReset(){if(COMMUNITY.club===CLUB.id)return;COMMUNITY.club=CLUB.id;COMMUNITY.profiles.clear();COMMUNITY.lead.clear();COMMUNITY.partners=[];COMMUNITY.partnerNext=null;COMMUNITY.partnerLoaded=false;}
+async function communityRequest(action,body,params={}){
+ if(mode==='local')return localCommunity(action,body,params);
+ const query=new URLSearchParams({action,club:CLUB.id,...params});const r=await fetch('/api/community?'+query,{method:body?'POST':'GET',headers:{Authorization:'Bearer '+await SB.token(),...(body?{'Content-Type':'application/json'}:{})},...(body?{body:JSON.stringify({...body,club:CLUB.id,action})}:{}),cache:'no-store',signal:AbortSignal.timeout(25000)});const j=await r.json();if(!r.ok)throw new Error(j.error||'Request failed');return j;
+}
+function profileVisibility(){return {workouts:true,scores:true,competition:true,friends:true,...S.settings.profileVisibility};}
+async function localCommunity(action,body,params){
+ const base='club/'+CLUB.id+'/';
+ if(action==='publish'){const show=profileVisibility();await cset(base+'profiles/'+myUid(),{uid:myUid(),show,bio:S.settings.bio||'',...(show.workouts?{workouts:sessionsSorted().filter(s=>(s.audience||'public')==='public').slice(0,30).map(s=>({id:s.id,d:s.d,type:s.type,min:s.min,rounds:s.rolls||0}))}:{}),...(show.competition?{competition:S.comp.events.map(e=>({n:e.n,d:e.d,medal:e.medal||'',div:e.div||''}))}:{})});return {ok:true};}
+ if(action==='profile'){const m=CLUB.members.list.find(m=>m.uid===params.uid&&m.socialAllowed);if(!m)throw new Error('Profile unavailable');const p=await cget(base+'profiles/'+m.uid)||{};const show={workouts:true,scores:true,competition:true,friends:true,...p.show};return {profile:{uid:m.uid,username:m.username||'member',av:m.av||'',club:CLUB.profile.n,belt:m.belt||'white',stripes:m.stripes||0,bio:p.bio||'',show,...(show.workouts?{workouts:p.workouts||[]}:{}),...(show.competition?{competition:p.competition||[]}:{}),...(show.friends?{friends:friendMembers(m.uid)}:{})}};}
+ if(action==='leaderboard'){const list=[];for(const ym of params.period==='all'?[thisMonth(),addMonth(thisMonth(),-1)]:[thisMonth()]){const feed=await cget(base+'feed/'+ym);list.push(...feed?.list||[]);}const totals=new Map();for(const p of list){const m=CLUB.members.list.find(m=>m.uid===p.uid&&m.socialAllowed);const published=await cget(base+'profiles/'+p.uid);if(!m||published?.show?.scores===false||p.sealed||['private','friends'].includes(p.audience))continue;const r=totals.get(p.uid)||{uid:p.uid,n:socialName(m),av:m.av||'',belt:m.belt,sessions:0,min:0,rounds:0,subs:0,kudos:0,streak:0};r.sessions++;for(const k of ['min','rounds','subs'])r[k]+=+p[k]||0;r.kudos+=(p.kudos||[]).length;r.streak=Math.max(r.streak,+p.weeks||0);totals.set(p.uid,r);}return {rows:[...totals.values()]};}
+ if(action==='partner-save'){const s=body.session;await cset(base+'partner-sessions/'+myUid()+'_'+s.id,{id:s.id,owner:myUid(),participants:s.with||[],d:s.d,min:s.min,type:s.type,rounds:s.rolls||0,t:Date.now()});return {ok:true};}
+ if(action==='partners'){const stored=clocal();const rows=Object.entries(stored).filter(([k])=>k.startsWith(base+'partner-sessions/')).map(([,v])=>v).filter(s=>s.owner!==myUid()&&s.participants?.includes(myUid()));return {items:rows,next:null};}
+ if(action==='remove'){const path=base+'feed/'+body.d.slice(0,7),doc=await cget(path)||{list:[]};if(doc.list.some(p=>p.id===body.id&&p.uid!==myUid()))throw new Error('Not permitted');doc.list=doc.list.filter(p=>p.id!==body.id);await cset(path,doc);if(!body.keepPartners)await cset(base+'partner-sessions/'+myUid()+'_'+body.id,{id:body.id,owner:myUid(),participants:[]});return {ok:true};}
+}
+async function publishProfile(){if(!CLUB.id||!socialOn())return;for(const k of ['settings','log','comp'])if(dirty[k])await flush(k);await communityRequest('publish',{});COMMUNITY.profiles.delete(myUid());COMMUNITY.lead.clear();}
+const communityClubLoad=clubLoad;
+clubLoad=async function(){await communityClubLoad();communityReset();if(CLUB.id&&!CLUB.err&&socialOn()){try{await publishProfile();}catch(_){/* Existing public profile remains available during temporary failures. */}}};
+const removeCommunityFeed=feedRemove;
+feedRemove=async function(id,d){if(!CLUB.id||!d)return;await communityRequest('remove',{id,d,keepPartners:true});FEED.raw.delete(id);await decryptFeed();COMMUNITY.lead.clear();if(UI.tab==='home')render();};
+const sharePartnerRounds=rollsShare;
+rollsShare=async function(rec){await communityRequest('partner-save',{session:rec});await sharePartnerRounds(rec);COMMUNITY.partnerLoaded=false;};
+async function deleteTraining(id,d){if(CLUB.id){await communityRequest('remove',{id,d});const ym=d.slice(0,7),rolls=await cget('club/'+CLUB.id+'/rolls/'+ym);if(rolls){rolls.list=(rolls.list||[]).filter(r=>!(r.sid===id&&r.a===myUid()));await cset('club/'+CLUB.id+'/rolls/'+ym,rolls);if(ym===thisMonth())CLUB.rolls=rolls;}}S.log.items=S.log.items.filter(s=>s.id!==id);save('log');await flush('log');FEED.raw.delete(id);await decryptFeed();COMMUNITY.lead.clear();await publishProfile();render();toast('Training deleted');return true;}
+const communityCard=feedCard;
+feedCard=function(p){let h=communityCard(p);h=h.replace('<div class="pinfo"><b>','<div class="pinfo"><button type="button" class="post-author" data-act="member-profile" data-uid="'+esc(p.uid)+'">').replace('</b><p class="muted small">','</button><p class="muted small">');if(p.uid===myUid())h=h.replace('</article>','<div class="post-owner-actions">'+(S.log.items.some(s=>s.id===p.id)?'<button type="button" class="text-button" data-act="edit-sess" data-id="'+esc(p.id)+'">Edit training</button>':'')+'<button type="button" class="text-button danger" data-act="delete-training" data-id="'+esc(p.id)+'" data-d="'+esc(p.d)+'">Delete training</button></div></article>');return h;};
+function friendMembers(id=myUid()){const ids=new Set((CLUB.friends?.list||[]).filter(r=>r.status==='accepted'&&(r.from===id||r.to===id)).map(r=>r.from===id?r.to:r.from));return (CLUB.members?.list||[]).filter(m=>ids.has(m.uid)&&m.socialAllowed===true).map(m=>({uid:m.uid,username:m.username||'member',av:m.av||''}));}
+function profileFriends(rows,own){return '<section class="card"><div class="card-head"><h3>Friends <span class="muted small">'+rows.length+'</span></h3>'+(own?'<button class="text-button" data-act="discover">Discover</button>':'')+'</div>'+(rows.length?'<div class="profile-friends">'+rows.map(m=>'<button type="button" class="profile-friend" data-act="member-profile" data-uid="'+esc(m.uid)+'">'+avatarHtml('@'+m.username,m.av,'sm')+'<span>@'+esc(m.username)+'</span></button>').join('')+'</div>':'<p class="empty">No friends yet.</p>')+'</section>';}
+function competitionRows(rows){return '<section class="card"><h3>Competition</h3>'+(rows.length?'<div class="list">'+rows.map(e=>'<div class="row"><div class="txt"><b>'+esc(e.n||e.event||'Competition')+'</b><small>'+esc(e.d||'')+(e.div?' · '+esc(e.div):'')+'</small></div>'+(e.medal?'<span class="pill">'+esc(e.medal)+'</span>':'')+'</div>').join('')+'</div>':'<p class="empty">No competitions yet.</p>')+'</section>';}
+function workoutRows(rows,own){return '<section class="card"><div class="card-head"><h3>'+(own?'My training':'Public workouts')+'</h3>'+(own&&UI.tab!=='myWorkouts'?'<button type="button" class="text-button" data-act="my-workouts">View all</button>':'')+'</div>'+(rows.length?'<div class="list">'+rows.map(s=>'<'+(own?'button':'div')+' class="row"'+(own?' data-act="edit-sess" data-id="'+esc(s.id)+'"':'')+'><div class="txt"><b>'+esc(SNAME[s.type]||s.type||'Training')+'</b><small>'+esc(s.d)+' · '+(+s.min||0)+' min · '+(+s.rounds||+s.rolls||0)+' rounds</small></div>'+(own?CHEV:'')+'</'+(own?'button':'div')+'>').join('')+'</div>':'<p class="empty">No training yet.</p>')+'</section>';}
+function scoreCard(uid){if(uid===myUid()&&profileVisibility().scores===false){const points=S.log.items.filter(s=>s.d.startsWith(thisMonth())&&(s.audience||'public')==='public').length;return '<section class="card profile-score"><span class="lbl">Leaderboard · This month</span><div class="stat"><b>'+points+'</b><span>points</span></div><p class="muted small">Hidden on public profile</p></section>';}const state=COMMUNITY.lead.get(CLUB.id+':month');if(!state){queueMicrotask(()=>loadLeaderboard('month'));return shimmer('score');}if(state.error)return '<div class="card"><button class="text-button" data-act="lead-retry">Retry score</button></div>';if(state.busy)return shimmer('score');const rows=rankRows(state.rows,'sessions'),r=rows.find(r=>r.uid===uid);return '<section class="card profile-score"><span class="lbl">Leaderboard · This month</span><div class="summary"><div class="stat"><b>'+(r?r.sessions:0)+'</b><span>points</span></div><div class="stat"><b>'+(r?'#'+r.rank:'—')+'</b><span>rank</span></div></div><p class="muted small">1 public training = 1 point</p></section>';}
+const ownProfileCommunity=VIEWS.profile;
+VIEWS.profile=function(){let h=ownProfileCommunity();h=h.replace('<h3>Recent sessions</h3>','<div class="card-head"><h3>Recent sessions</h3><button class="text-button" data-act="my-workouts">View all</button></div>');if(socialOn()){if(CLUB.id)h+=scoreCard(myUid());h+=competitionRows(S.comp.events)+profileFriends(friendMembers(),true);}else h+=competitionRows(S.comp.events);if(CLUB.id){const linked=COMMUNITY.partners.filter(s=>!(S.settings.hiddenPartnerSessions||[]).includes(s.owner+':'+s.id));if(!COMMUNITY.partnerLoaded&&!COMMUNITY.partnerBusy)queueMicrotask(()=>loadPartners());if(linked.length)h+='<section class="card"><div class="card-head"><h3>Added by training partners</h3><button class="text-button" data-act="my-workouts">View all</button></div><div class="list">'+linked.slice(0,4).map(s=>'<div class="row"><div class="txt"><b>'+esc(SNAME[s.type]||s.type)+' · '+(+s.min||0)+' min</b><small>'+esc(s.d)+'</small></div></div>').join('')+'</div></section>';}return h+'<button type="button" class="btn ghost wide" data-act="my-workouts">My training history</button>';};
+profileSheet=function(id){if(!socialOn())return;if(!(CLUB.members?.list||[]).some(m=>m.uid===id&&m.socialAllowed===true))return;UI.prevTab=UI.tab==='memberProfile'?UI.prevTab:UI.tab;UI.profileUid=id;UI.tab='memberProfile';COMMUNITY.profiles.delete(id);go('enter-l');loadMemberProfile(id);};
+async function loadMemberProfile(id,retry=false){communityReset();if(COMMUNITY.profiles.has(id)&&!retry)return;COMMUNITY.profiles.set(id,{busy:true});try{const j=await communityRequest('profile',null,{uid:id});COMMUNITY.profiles.set(id,{profile:j.profile});}catch(_){COMMUNITY.profiles.set(id,{error:true});}if(UI.tab==='memberProfile'&&UI.profileUid===id)render();}
+VIEWS.memberProfile=function(){const id=UI.profileUid,state=COMMUNITY.profiles.get(id);let h='<div class="pf-nav"><button class="icon-btn" data-act="profile-back">‹ Back</button></div>';if(!state||state.busy)return h+shimmer('profile');if(state.error)return h+'<div class="card"><p class="empty">Could not open profile.</p><button class="btn ghost" data-act="profile-retry">Try again</button></div>';const p=state.profile;h+='<section class="card profile pf">'+avatarHtml('@'+p.username,p.av,'xl')+'<h2>@'+esc(p.username)+'</h2><span class="public-belt"><i style="background:'+(BELT_COLOR[p.belt.split('-')[0]]||'#999')+'"></i>'+esc(p.belt)+' · '+(+p.stripes||0)+' stripes</span><div class="profile-club"><span class="lbl">Club</span><b>'+esc(p.club)+'</b></div>'+(p.bio?'<p class="profile-bio">'+esc(p.bio)+'</p>':'')+friendButton(id)+'</section>';if(p.show.scores)h+=scoreCard(id);if(p.show.workouts)h+=workoutRows(p.workouts||[],false);if(p.show.competition)h+=competitionRows(p.competition||[]);if(p.show.friends)h+=profileFriends(p.friends||[],false);return h;};
+const visibilityEditor=profileEditSheet;
+profileEditSheet=function(){visibilityEditor();$('sheet').classList.add('profile-edit-sheet');const show=profileVisibility();$('sheet-body').querySelector('.foot').insertAdjacentHTML('beforebegin','<section class="form-section profile-visibility"><h3>Public profile</h3><p class="muted small">Club and belt are always visible. Contact details and birth date stay private.</p>'+[['workouts','Public workouts'],['scores','Leaderboard points'],['competition','Competition'],['friends','Friends']].map(([key,label])=>'<label class="visibility-toggle"><span>'+label+'</span><input type="checkbox" id="visible-'+key+'"'+(show[key]?' checked':'')+' role="switch"></label>').join('')+'</section>');const original=UI.sheetSave;UI.sheetSave=async function(){const selected=Object.fromEntries(Object.keys(show).map(k=>[k,$('visible-'+k)?.checked!==false]));const result=await original();if(result!==false){S.settings.profileVisibility=selected;save('settings');await publishProfile();render();}return result;};};
+async function loadPartners(more=false){if(!CLUB.id||COMMUNITY.partnerBusy)return;const club=CLUB.id;COMMUNITY.partnerBusy=true;if(!more)COMMUNITY.partnerLoaded=false;try{const j=await communityRequest('partners',null,more&&COMMUNITY.partnerNext?{before:COMMUNITY.partnerNext}:{});if(CLUB.id!==club)return;const items=more?[...COMMUNITY.partners,...j.items]:j.items;COMMUNITY.partners=[...new Map(items.map(s=>[s.owner+':'+s.id,s])).values()];COMMUNITY.partnerNext=j.next;COMMUNITY.partnerLoaded=true;COMMUNITY.partnerError=false;}catch(_){COMMUNITY.partnerError=true;COMMUNITY.partnerLoaded=true;}finally{COMMUNITY.partnerBusy=false;if(['myWorkouts','profile'].includes(UI.tab))render();}}
+VIEWS.myWorkouts=function(){const ignored=new Set(S.settings.hiddenPartnerSessions||[]),linked=COMMUNITY.partners.filter(s=>!ignored.has(s.owner+':'+s.id));let h='<div class="card-head"><button class="icon-btn" data-act="profile-back">‹ Back</button><button class="text-button" data-act="partner-refresh">Refresh</button></div>'+workoutRows(sessionsSorted(),true)+'<section class="card"><h3>Added by training partners</h3><p class="muted small">Linked sessions stay separate from your own records and leaderboard points.</p>';
+ if(!CLUB.id)return h+'<p class="empty">Join a club to train with partners.</p></section>';
+ if(!COMMUNITY.partnerLoaded)return h+'</section>'+shimmer('feed');if(COMMUNITY.partnerError)return h+'<button class="btn ghost" data-act="partner-refresh">Try again</button></section>';
+ h+=linked.length?'<div class="list">'+linked.map(s=>{const m=CLUB.members.list.find(m=>m.uid===s.owner);return '<div class="row"><div class="txt"><b>'+esc(SNAME[s.type]||s.type)+' · '+(+s.min||0)+' min</b><small>'+esc(s.d)+' · '+esc(m?.socialAllowed?socialName(m):'Training partner')+' · '+(+s.rounds||0)+' rounds</small></div><button type="button" class="text-button" data-act="partner-hide" data-key="'+esc(s.owner+':'+s.id)+'">Remove</button></div>';}).join('')+'</div>':'<p class="empty">No linked sessions yet.</p>';if(COMMUNITY.partnerNext)h+='<button class="btn ghost wide" data-act="partners-more">More training</button>';return h+'</section>';};
+function rankRows(rows,metric){const sorted=(rows||[]).map(r=>({...r,v:r[metric]||0})).sort((a,b)=>b.v-a.v||a.n.localeCompare(b.n));let rank=0;sorted.forEach((r,i)=>{if(!i||r.v!==sorted[i-1].v)rank=i+1;r.rank=rank;});return sorted;}
+async function loadLeaderboard(period,retry=false){communityReset();const key=CLUB.id+':'+period;if(COMMUNITY.lead.has(key)&&!retry)return;COMMUNITY.lead.set(key,{busy:true});try{const j=await communityRequest('leaderboard',null,{period});COMMUNITY.lead.set(key,{rows:j.rows});}catch(_){COMMUNITY.lead.set(key,{error:true});}if(['home','profile','memberProfile'].includes(UI.tab))render();}
+leadRows=function(){return rankRows(COMMUNITY.lead.get(CLUB.id+':'+UI.leadPer)?.rows,UI.leadBy);};
+LEAD_BY[0]=['sessions','Points','points'];
+const leaderboardCommunity=vLeaderboard;
+vLeaderboard=function(){if(!CLUB.id)return leaderboardCommunity();const state=COMMUNITY.lead.get(CLUB.id+':'+UI.leadPer);if(!state){queueMicrotask(()=>loadLeaderboard(UI.leadPer));return shimmer('feed');}if(state.busy)return shimmer('feed');if(state.error)return '<div class="card"><button class="btn ghost" data-act="lead-retry">Try again</button></div>';return '<p class="leaderboard-note muted small">Public club training · 1 session = 1 point</p>'+leaderboardCommunity();};
+const loadingClubView=VIEWS.club;VIEWS.club=function(){return clubNeeds()?shimmer('club'):loadingClubView();};
+const homeCommunity=VIEWS.home;
+VIEWS.home=function(){let h=homeCommunity();if(!socialOn())return h;if(clubNeeds())return h+shimmer('feed');if(!CLUB.id)return h;const tabs=seg([['feed','Feed'],['lead','Leaderboard']],UI.homeSeg,'homeseg');if(UI.homeSeg==='lead')return (liveOn()?liveCard()+weekCard():weekCard()+liveCard())+tabs+vLeaderboard();h=h.replace('<div class="feed-heading">',tabs+'<div class="feed-heading">');if(!FEED.ready)h+=tabs+shimmer('feed');else if(!unifiedPosts().length&&!FEED.done)h=h.replace('<section id="feed-list" aria-label="Training feed">','<section id="feed-list" aria-label="Training feed">'+shimmer('feed'));return h;};
+const paintCommunityFeed=paintFeed;
+paintFeed=function(){if(FEED.raw.size||FEED.done||FEED.error)$('feed-list')?.querySelector('.layout-skeleton')?.remove();paintCommunityFeed();};
+function partnerPicker(f){const selected=UI.sheet?.with||f.with||[],friends=new Set(acceptedFriends());const members=(CLUB.members?.list||[]).filter(m=>m.uid&&m.uid!==myUid()).sort((a,b)=>Number(friends.has(b.uid))-Number(friends.has(a.uid))||String(a.username||a.n).localeCompare(String(b.username||b.n)));return !members.length?'':'<section class="training-section partner-section"><span class="lbl">Training partners</span><div class="partner-strip" data-scroll-key="training-partners">'+members.map(m=>'<button type="button" class="partner-tile'+(selected.includes(m.uid)?' on':'')+'" data-act="with-toggle" data-who="'+esc(m.uid)+'" aria-pressed="'+selected.includes(m.uid)+'">'+avatarHtml(m.username||m.n,m.av,'sm')+'<span>'+esc(m.username?'@'+m.username:m.n||'Member')+'</span><i>'+CHECK+'</i></button>').join('')+'</div><p class="muted small">Selected partners also get a linked session in their training history.</p></section>';}
+effortChoices=function(value){const labels=['Easy','Light','Moderate','Hard','All out'],v=Math.max(1,Math.min(5,+value||1));return '<div class="effort-slider" data-effort="'+v+'"><div><strong id="effort-label">'+esc(value?tr(labels[v-1]):tr('Not set'))+'</strong><span id="effort-value">'+(value?v+'/5':'—')+'</span></div><input id="f-effort" type="range" min="1" max="5" step="1" value="'+v+'" aria-label="Effort"><div class="effort-ends"><span>Easy</span><span>All out</span></div></div>';};
+const mobileSession=sessSheet;
+sessSheet=function(id,prefill){mobileSession(id,prefill);const f=(id?S.log.items.find(s=>s.id===id):prefill)||{};const section=$('sheet-body').querySelector('.training-section');if(CLUB.id)section.insertAdjacentHTML('beforebegin',partnerPicker(f));const oldPartners=$('sheet-body').querySelector('.edit-details [data-act="with-toggle"]');if(oldPartners)oldPartners.closest('.field').remove();$('sheet-body').querySelector('.edit-details summary').textContent=tr('Techniques and notes');const min=$('f-min');min.min=.01;min.step=.01;min.closest('.field').insertAdjacentHTML('afterend','<div class="duration-presets">'+(f.stoppedDuration?'<button type="button" class="chip" data-act="duration-preset" data-min="'+f.stoppedDuration+'">Stopped · '+fmtT(f.elapsedSeconds)+'</button>':'')+[30,45,60,90,120].map(v=>'<button type="button" class="chip'+(+min.value===v?' on':'')+'" data-act="duration-preset" data-min="'+v+'">'+v+' min</button>').join('')+'</div>');const saveSession=UI.sheetSave;UI.sheetSave=async function(){const result=await saveSession();if(result!==false){if(f.stoppedAt){const rec=S.log.items.find(s=>s.id===(id||UI.sheet?.savedId));if(rec){rec.startedAt=f.startedAt;rec.stoppedAt=f.stoppedAt;rec.elapsedSeconds=f.elapsedSeconds;save('log');}}await publishProfile();const saved=UI.sheet?.savedId;if(saved)setTimeout(()=>shareSheet(saved,f.live?'story':null),450);}return result;};UI.sheetDel=id?()=>deleteTraining(id,f.d):null;};
+/* Preserve each horizontal menu's position; reset document scroll only when the route changes. */
+const scrollMenus=new Map();let lastRoute='',lastScope='';
+function routeKey(){return UI.tab+':'+(UI.tab==='me'?UI.seg.me+':'+(UI.seg.me==='body'?UI.body.cat:UI.seg.me==='comp'?UI.comp.id||'list':''):UI.tab==='club'?UI.clubSeg:UI.tab==='home'?UI.homeSeg:UI.tab==='memberProfile'?UI.profileUid:UI.tab==='tech'?(UI.tech.id||'root')+':'+UI.tech.view:'');}
+function scrollKey(el,index){return UI.tab+':'+(el.dataset.scrollKey||el.dataset.group||el.querySelector('[data-act]')?.dataset.act||el.className.split(' ')[0])+':'+index;}
+const renderMobile=render;
+render=function(anim){const route=routeKey();document.querySelectorAll('#main .seg,#main .chips,#main .suggested-strip').forEach((el,i)=>scrollMenus.set(lastScope+':'+(el.dataset.scrollKey||el.dataset.group||el.querySelector('[data-act]')?.dataset.act||el.className.split(' ')[0])+':'+i,el.scrollLeft));renderMobile(anim);document.querySelectorAll('#main .seg,#main .chips,#main .suggested-strip').forEach((el,i)=>{const x=scrollMenus.get(scrollKey(el,i));if(x!==undefined)el.scrollLeft=x;});if(route!==lastRoute){window.scrollTo({top:0,behavior:'instant'});$('main').scrollTop=0;}lastRoute=route;lastScope=UI.tab;$('boot-splash')?.remove();};
+const closeCommunitySheet=closeSheet;
+closeSheet=function(){if($('sheet').classList.contains('training-sheet')&&liveOn()){delete S.settings.live.stoppedAt;save('settings');}closeCommunitySheet();$('sheet').classList.remove('profile-edit-sheet');};
+function rememberMenuScroll(e){const el=e.target;if(el.matches?.('#main .seg,#main .chips,#main .suggested-strip')){const els=[...document.querySelectorAll('#main .seg,#main .chips,#main .suggested-strip')];scrollMenus.set(scrollKey(el,els.indexOf(el)),el.scrollLeft);}}
+document.addEventListener('scroll',rememberMenuScroll,true);
+document.addEventListener('input',e=>{if(e.target.id==='f-effort'&&UI.sheet){const v=+e.target.value;UI.sheet.picks.rpe=v;document.querySelector('.effort-slider').dataset.effort=v;$('effort-label').textContent=tr(['Easy','Light','Moderate','Hard','All out'][v-1]);$('effort-value').textContent=v+'/5';}});
+document.addEventListener('click',e=>{const b=e.target.closest('[data-act]');if(!b)return;const d=b.dataset;
+ if(d.act==='logout'){scanStop();releaseCamera();}
+ if(d.act==='boot-retry')startCloud();
+ if(d.act==='my-workouts'){if(UI.tab!=='myWorkouts')UI.prevTab=UI.tab;UI.tab='myWorkouts';go('enter-l');loadPartners();}
+ if(d.act==='delete-training')openSheet('Delete training?','<p>This removes your session from your history, the feed and your partners’ linked history.</p>',{saveLabel:'Delete training',onSave:()=>deleteTraining(d.id,d.d)});
+ if(d.act==='profile-retry')loadMemberProfile(UI.profileUid,true);
+ if(d.act==='lead-retry'){COMMUNITY.lead.delete(CLUB.id+':'+(UI.tab==='home'?UI.leadPer:'month'));render();}
+ if(d.act==='partner-refresh')loadPartners();if(d.act==='partners-more')loadPartners(true);
+ if(d.act==='partner-hide'){S.settings.hiddenPartnerSessions=[...new Set([...(S.settings.hiddenPartnerSessions||[]),d.key])];save('settings');render();}
+ if(d.act==='duration-preset'){const input=$('f-min');input.value=d.min;document.querySelectorAll('[data-act="duration-preset"]').forEach(el=>el.classList.toggle('on',el===b));updateFinishStats();}
+ if(d.act==='with-toggle')b.setAttribute('aria-pressed',b.classList.contains('on'));
+});
+setInterval(()=>{if(document.visibilityState==='visible'&&['myWorkouts','profile'].includes(UI.tab)&&CLUB.id&&!COMMUNITY.partnerBusy)loadPartners();},30000);
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&['myWorkouts','profile'].includes(UI.tab)&&CLUB.id)loadPartners();});
 
 /* ---------- boot ---------- */
 try { const t = localStorage.getItem("bjj-theme"); if (t && t !== "system") document.documentElement.dataset.theme = t; } catch (e) {}

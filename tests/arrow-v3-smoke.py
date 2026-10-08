@@ -55,8 +55,8 @@ with sync_playwright() as p:
  assert page.locator('#sh-cv').evaluate('(e)=>e.width===1080 && e.height===1920')
  click('pick','[data-group="fmt"][data-v="post"]');assert page.locator('#sh-cv').evaluate('(e)=>e.height===1350')
  click('sheet-close')
- post=page.evaluate('JSON.parse(localStorage.getItem("bjj-club-local"))["club/test/feed/"+new Date().toISOString().slice(0,7)].list.find(p=>p.uid==="local")');assert post['audience']=='friends' and 'sealed' in post and 'min' not in post;assert page.evaluate('async(v)=>(await ARROW.openPayload(v.post.sealed,"peer",v.key)).min===5',{'post':post,'key':peerkey['privateKey']})
- assert page.locator('.feed [data-uid="local"]').count()==1
+ post=page.evaluate('JSON.parse(localStorage.getItem("bjj-club-local"))["club/test/feed/"+new Date().toISOString().slice(0,7)].list.find(p=>p.uid==="local")');assert post['audience']=='friends' and 'sealed' in post and 'min' not in post;assert page.evaluate('async(v)=>(await ARROW.openPayload(v.post.sealed,"peer",v.key)).min===JSON.parse(localStorage.getItem("bjj-v1")).log.items[0].min',{'post':post,'key':peerkey['privateKey']})
+ assert page.locator('.feed .av[data-uid="local"]').count()==1
  assert page.locator('.post-audience[aria-label="Friends"]').count()==1
  assert page.evaluate('async(p)=>await ARROW.openPayload(p.sealed,"outsider",JSON.parse(localStorage.getItem("bjj-v1")).settings.socialKey.privateKey)===null',post)
  # Private sessions never create social posts.
