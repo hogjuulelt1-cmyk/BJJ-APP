@@ -1,0 +1,8 @@
+button{transition:background-color .14s ease,opacity .14s ease;position:relative}
+.button-spinner{display:inline-block;width:18px;height:18px;flex:none;border:2px solid currentColor;border-right-color:transparent;border-radius:50%;animation:arrow-spin .75s linear infinite}
+@keyframes arrow-spin{to{transform:rotate(360deg)}}
+button.progress-visible .busy-label{visibility:hidden}
+button.progress-visible>.button-spinner{position:absolute;left:calc(50% - 9px);top:calc(50% - 9px);color:inherit}
+.initial-progress{min-height:180px;display:grid;place-items:center;color:var(--accent);visibility:hidden}
+.initial-progress.visible{visibility:visible}.initial-progress .button-spinner{width:24px;height:24px}
+@media(prefers-reduced-motion:reduce){button{transition:none}.button-spinner{animation:none;border-right-color:currentColor;border-style:dotted}}

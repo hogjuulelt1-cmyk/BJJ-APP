@@ -163,7 +163,8 @@ Underlying shared club-row RLS is unchanged: client coach controls are not backe
 authorization; do not describe them as a server-enforced permission boundary.
 
 `share-frame.js` draws three original BJJ frames with 9:16/4:5 exports. Share photos
-remain local. Synced labels remain removed. Delayed network loading and busy buttons use Cyrillic text. Tests: `arrow-smoke.py`, `arrow-v3-smoke.py` and `arrow-admin-smoke.py`
+remain local. Synced labels remain removed. UI feedback uses delayed, action-scoped animated icons.
+Never wrap every fetch in a global loading banner. Tests: `arrow-smoke.py`, `arrow-v3-smoke.py` and `arrow-admin-smoke.py`
 (the admin test mocks all Supabase requests and never changes production data).
 
 ### Unified timeline (October 2026)
@@ -223,3 +224,12 @@ claimed. Audit entries use owner-private bjj/u/<admin>/admin-audit paths.
 See ADMIN-SETUP.md for setup, encrypted-contact refresh and existing shared-RLS
 limitations. Do not add any backend key to public config or source control.
 Admin tests mock all accounts and writes: admin-api.test.js, arrow-v7-admin-smoke.py.
+
+### Quiet progress feedback
+ui-feedback.js/css provide delegated click pulses and action-local busy indicators.
+Buttons lock immediately, but show an icon only after 650ms. A shown icon remains
+for at least 250ms; wait() settles progress before transitioning where supported.
+Labels and widths are preserved, with an accessible name and reduced-motion support.
+There is no global fetch override/banner. Only a truly empty initial view gets one
+delayed icon slot. Background refreshes retain content without progress flashes.
+Tests: arrow-v8-feedback-smoke.py; auth/admin integration smoke checks.

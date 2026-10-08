@@ -624,13 +624,10 @@ header.top{position:sticky;top:0;z-index:30;background:var(--bg);padding-top:max
 
 .mrow .mic{background:transparent;border-radius:0;color:var(--muted);width:32px;height:36px}.mrow .mic svg{width:23px;height:23px;stroke:currentColor;fill:none;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}.mrow.danger .mic{background:transparent;color:var(--bad)}.attendance-count{border:0;border-top:1px solid var(--line);background:transparent;width:100%;padding:16px 0 0;margin-top:16px;display:flex;align-items:center;justify-content:space-between;text-align:left}.attendance-count>span:first-child{display:flex;align-items:baseline;gap:10px}.attendance-count b{font-size:2rem;font-family:var(--display);font-variant-numeric:tabular-nums;line-height:1}.attendance-count small{color:var(--muted);font-size:.8rem}.attendance-count-detail{display:flex;align-items:center;color:var(--muted);font-size:.8rem;gap:6px}.attendance-count-detail .chev{width:18px;height:18px}.attendance-summary{display:flex;align-items:baseline;gap:12px;padding:12px 0 20px}.attendance-summary b{font-size:2.5rem}.attendance-summary span{color:var(--muted)}
 
-button{transition:transform .14s ease,opacity .14s ease,background .14s ease}button:active:not(:disabled){transform:scale(.96)}button[aria-busy="true"]{display:inline-flex;align-items:center;justify-content:center;gap:9px}
-.button-spinner{display:inline-block;width:16px;height:16px;flex:none;border:2px solid currentColor;border-right-color:transparent;border-radius:50%;animation:arrow-spin .75s linear infinite}
-@keyframes arrow-spin{to{transform:rotate(360deg)}}
-#network-progress{position:fixed;bottom:calc(90px + env(safe-area-inset-bottom));left:50%;transform:translateX(-50%);z-index:2000;padding:10px 16px;display:flex;align-items:center;gap:8px;border:1px solid var(--line);border-radius:24px;background:var(--surface);color:var(--text);box-shadow:0 4px 20px #0002;font-size:.85rem;pointer-events:none}#network-progress[hidden]{display:none}
 .auth-card{max-width:460px;margin:24px auto}.auth-card h2{margin:10px 0 24px}.auth-card .field{margin-bottom:18px}.remember-row{display:flex;align-items:center;gap:10px;margin:18px 0;font-size:.9rem}.remember-row input{width:20px;height:20px;accent-color:var(--accent)}.auth-recovery{display:flex;flex-wrap:wrap;justify-content:center;gap:4px;border-top:1px solid var(--line);margin-top:16px;padding-top:8px}.auth-recovery .btn{font-size:.8rem}.auth-message{color:var(--bad);font-size:.9rem}
 @media(prefers-reduced-motion:reduce){button{transition:none}button:active:not(:disabled){transform:none}.button-spinner{animation:none}}
 </style>
+<link rel="stylesheet" href="ui-feedback.css?v=1">
 </head>
 <body>
 <div class="wrap">
@@ -651,6 +648,7 @@ button{transition:transform .14s ease,opacity .14s ease,background .14s ease}but
 <div class="backdrop" id="backdrop" data-act="sheet-close"></div>
 <div class="sheet" id="sheet" role="dialog" aria-modal="true"><div class="in"><div class="handle"></div><div id="sheet-body"></div></div></div>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
+<script src="ui-feedback.js?v=1"></script>
 <script src="config.js"></script>
 <script src="qr.js?v=1"></script>
 <script src="lang-mn.js?v=16"></script>
@@ -661,6 +659,6 @@ button{transition:transform .14s ease,opacity .14s ease,background .14s ease}but
 <script src="share-frame.js?v=1"></script>
 <script src="feed-page.js?v=1"></script>
 <script src="check-in.js?v=1"></script>
-<script src="app.js?v=33"></script>
+<script src="app.js?v=34"></script>
 </body>
 </html>

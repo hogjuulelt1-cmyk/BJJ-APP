@@ -1,0 +1,16 @@
+from playwright.sync_api import sync_playwright
+from static_fixture import install
+with sync_playwright() as p:
+ b=p.chromium.launch(executable_path='/usr/bin/chromium',args=['--no-sandbox']);c=b.new_context(viewport={'width':390,'height':844});install(c)
+ page=c.new_page();page.route('https://fonts.googleapis.com/**',lambda r:r.abort());page.route('https://fonts.gstatic.com/**',lambda r:r.abort());page.goto('https://arrow.fixture/ui-feedback.js');page.set_content('<link rel="stylesheet" href="https://arrow.fixture/ui-feedback.css"><button id="save">Бүртгүүлэх</button><main></main>');page.add_script_tag(url='https://arrow.fixture/ui-feedback.js');page.wait_for_timeout(100)
+ page.evaluate('window.requests=0;save.onclick=async()=>{requests++;ARROW_UI.busy(save,true);await (window.hold?new Promise(r=>window.finishAction=r):new Promise(r=>setTimeout(r,80)));await ARROW_UI.wait(save);ARROW_UI.busy(save,false);};void 0')
+ page.locator('#save').dispatch_event('pointerdown');assert page.evaluate('save.getAnimations().some(a=>a.id==="arrow-click")');page.evaluate('save.click()');assert page.locator('#save').is_disabled();page.wait_for_timeout(150);assert page.locator('.button-spinner').count()==0;assert page.locator('#save').inner_text()=='Бүртгүүлэх'
+ page.evaluate('window.hold=true');before=page.evaluate('save.offsetWidth');page.evaluate('save.click();save.click()');page.wait_for_timeout(300);assert page.locator('.button-spinner').count()==0;page.wait_for_function('save.classList.contains("progress-visible")');assert page.locator('#save.progress-visible .button-spinner').is_visible();assert page.locator('#save').get_attribute('aria-label')=='Бүртгүүлэх';assert page.evaluate('save.offsetWidth')==before;assert 'Уншиж' not in page.locator('body').inner_text();assert 'Loading' not in page.locator('body').inner_text()
+ # A visible indicator survives completion briefly rather than flashing.
+ page.evaluate('finishAction()');assert page.locator('.button-spinner').count()==1;page.wait_for_timeout(300);assert page.locator('.button-spinner').count()==0;assert not page.locator('#save').is_disabled();assert page.evaluate('requests')==2,page.evaluate('requests')
+ # No global fetch interception / network banner, and one initial-view slot only.
+ page.evaluate('window.stop=ARROW_UI.slot(document.querySelector("main"));void 0');page.wait_for_timeout(150);assert not page.locator('.initial-progress').is_visible();page.evaluate('stop()');assert page.locator('.initial-progress').count()==0
+ page.evaluate('window.stop=ARROW_UI.slot(document.querySelector("main"));void 0');page.wait_for_timeout(700);assert page.locator('.initial-progress.visible').is_visible();assert page.locator('main').inner_text()=='';page.evaluate('stop()');assert page.locator('#network-progress').count()==0
+ page.emulate_media(reduced_motion='reduce');page.wait_for_timeout(250);page.locator('#save').dispatch_event('pointerdown');assert not page.evaluate('save.getAnimations().some(a=>a.id==="arrow-click")')
+ print('PASS V8 feedback: click pulse, fast actions without spinner, delayed icon-only busy state, stable button width/name, minimum visibility, duplicate-click guard, quiet view startup and reduced motion')
+ b.close()

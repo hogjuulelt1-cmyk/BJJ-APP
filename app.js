@@ -141,6 +141,7 @@ function flush(key) {
 }
 
 async function startCloud() {
+  const stopProgress=window.ARROW_UI.slot($("main"));
   try {
     let rows = await SB.list(NS()); let legacy = false;
     if (!rows.length) { const old = await SB.list("bjj/"); rows = old.filter((r) => KEYS.includes(r.path.slice(4))).map((r) => ({ path: NS() + r.path.slice(4), data: r.data })); legacy = rows.length > 0; }
@@ -149,11 +150,12 @@ async function startCloud() {
     if (legacy) for (const k of KEYS) await SB.set(NS() + k, clone(S[k]));
     if (!S.settings.seeded) { seedAll(false); for (const k of ["tree", "plans", "body", "belt", "settings"]) await SB.set(NS() + k, clone(S[k])); }
     { const added = mergeSeed(); if (added) { await SB.set(NS() + "tree", clone(S.tree)); await SB.set(NS() + "settings", clone(S.settings)); } }
+    await window.ARROW_UI.wait(document.querySelector('#login button[aria-busy="true"]'));
     mode = "cloud"; applyTheme(); if (S.settings.lang && S.settings.lang !== I18N.lang) I18N.set(S.settings.lang); if (I18N.lang === "mn") I18N.buildNames(); setSync("ok"); document.body.classList.remove("locked"); render();
     if (S.settings.lastAdded) { toast(S.settings.lastAdded + " new moves added to the library"); delete S.settings.lastAdded; }
     joinPending();
     document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible" && !Object.keys(dirty).length) refresh(); });
-  } catch (e) { if (e.message === "noauth") showLogin(); else { setSync("err", "Could not connect"); console.error(e); } }
+  } catch (e) { if (e.message === "noauth") showLogin(); else { setSync("err", "Could not connect"); console.error(e); } } finally {stopProgress();}
 }
 async function refresh() {
   try { const rows = await SB.list(NS()); let ch = false; for (const r of rows) { const k = r.path.slice(NS().length); if (KEYS.includes(k) && !dirty[k] && JSON.stringify(S[k]) !== JSON.stringify(r.data)) { S[k] = r.data; ch = true; } } if (ch) { normalize(); render(); } } catch (e) {}
@@ -258,10 +260,7 @@ function startLocal() {
   normalize(); if (!S.settings.seeded) { seedAll(false); localStorage.setItem(LKEY, JSON.stringify(S)); } else if (mergeSeed()) localStorage.setItem(LKEY, JSON.stringify(S));
   mode = "local"; applyTheme(); if (S.settings.lang && S.settings.lang !== I18N.lang) I18N.set(S.settings.lang); if (I18N.lang === "mn") I18N.buildNames(); setSync("local"); render(); joinPending();
 }
-function buttonBusy(button, busy, label) {
-  if (!button) return; if (busy) { if (button.dataset.busy) return; button.dataset.busy = '1'; button.dataset.original = button.innerHTML; button.disabled = true; button.setAttribute('aria-busy','true'); button.innerHTML = '<span class="button-spinner" aria-hidden="true"></span>' + esc(label || 'Уншиж байна…'); }
-  else { button.disabled = false; button.removeAttribute('aria-busy'); if (button.dataset.busy) button.innerHTML = button.dataset.original; delete button.dataset.busy; delete button.dataset.original; }
-}
+function buttonBusy(button,busy){window.ARROW_UI.busy(button,busy);}
 function rememberLogin(login) { try { const remember = !$('lg-remember') || $('lg-remember').checked; localStorage.setItem('arrow-remember',remember?'1':'0'); if (remember) localStorage.setItem('arrow-login',login); else localStorage.removeItem('arrow-login'); } catch(e) {} }
 function showLogin(msg, signup) {
   document.body.classList.add('locked'); $('tabs').innerHTML = ''; $('belt').innerHTML = '';
@@ -411,7 +410,7 @@ function closeSheet() { scanStop(); $("sheet").classList.remove("open"); $("back
 async function finishSheetSave(button) {
   if (!UI.sheetSave || UI.savingSheet) return;
   const sheet = UI.sheet; UI.savingSheet = true; button = button || document.querySelector('[data-act="sheet-save"]'); buttonBusy(button,true,'Хадгалж байна…');
-  try { if (await UI.sheetSave() !== false && UI.sheet === sheet) closeSheet(); }
+  try { const saved=await UI.sheetSave();await window.ARROW_UI.wait(button);if(saved !== false && UI.sheet === sheet) closeSheet(); }
   catch (e) { toast("Could not save: " + e.message); }
   finally { UI.savingSheet = false; if (button && button.isConnected) buttonBusy(button,false); }
 }
@@ -2528,7 +2527,7 @@ const classSheetBase = classSheet;
 classSheet = function (i) { if (!isAdmin()) return; const all = (CLUB.profile.schedule || []).slice().sort((a,b)=>a.d-b.d || String(a.t).localeCompare(String(b.t))); const x = i == null ? null : all[i]; classSheetBase(i); const extra = document.createElement('div'); extra.innerHTML = '<div class="field"><span class="lbl">Class group</span>' + chips('agegroup', [['kids','Kids'],['adult','Adults'],['all','All ages']], x ? scheduleGroup(x) : 'adult') + '</div>'; $('sheet-body').insertBefore(extra,$('sheet-body').querySelector('.foot')); UI.sheet.picks.agegroup = x ? scheduleGroup(x) : 'adult'; const old = UI.sheetSave; UI.sheetSave = async function () { const group = pickVal('agegroup','adult'); const result = await old(); if (result) { const rec = x || CLUB.profile.schedule[CLUB.profile.schedule.length-1]; rec.group = rec.kind === 'kids' ? 'kids' : rec.kind === 'open' ? 'all' : group; await cset('club/' + CLUB.id + '/profile',CLUB.profile); render(); } return result; }; };
 const shareSheetBase = shareSheet;
 shareSheet = function (id, fmt) { shareSheetBase(id, fmt); if (!$('sh-cv')) return; const foot = $('sheet-body').querySelector('.foot'); foot.innerHTML = '<button class="btn wide" data-act="sheet-close">Done</button>'; };
-document.addEventListener('submit', async (e) => { if (e.target.id !== 'arrow-age') return; e.preventDefault(); const dob = sv('age-dob'); if (A.age(dob,todayIso()) === null) { toast('Enter a valid date of birth'); return; } if (!validContact(sv('pf-phone'),sv('pf-address')) || !(sv('on-name').trim()||S.settings.name) || !A.validUsername(sv('on-user')||S.settings.username)) { toast('Complete your name and contact details'); return; } Object.assign(S.settings,{birthDate:dob,name:sv('on-name').trim()||S.settings.name,username:A.username(sv('on-user')||S.settings.username),phone:sv('pf-phone').trim(),address:sv('pf-address').trim(),socialAddress:sv('pf-social').trim(),onboardingComplete:true}); const button=e.target.querySelector('button[type="submit"]'); if(button?.disabled)return;buttonBusy(button,true,'Хадгалж байна…');try{save('settings');await flush('settings'); if (CLUB.id) { await clubUpdateMe(); await readPrivateProfiles(); } else if (S.settings.clubId) await clubLoad(); render();}catch(err){toast('Could not save: '+err.message);}finally{buttonBusy(button,false);} });
+document.addEventListener('submit', async (e) => { if (e.target.id !== 'arrow-age') return; e.preventDefault(); const dob = sv('age-dob'); if (A.age(dob,todayIso()) === null) { toast('Enter a valid date of birth'); return; } if (!validContact(sv('pf-phone'),sv('pf-address')) || !(sv('on-name').trim()||S.settings.name) || !A.validUsername(sv('on-user')||S.settings.username)) { toast('Complete your name and contact details'); return; } Object.assign(S.settings,{birthDate:dob,name:sv('on-name').trim()||S.settings.name,username:A.username(sv('on-user')||S.settings.username),phone:sv('pf-phone').trim(),address:sv('pf-address').trim(),socialAddress:sv('pf-social').trim(),onboardingComplete:true}); const button=e.target.querySelector('button[type="submit"]'); if(button?.disabled)return;buttonBusy(button,true,'Хадгалж байна…');try{save('settings');await flush('settings'); if (CLUB.id) { await clubUpdateMe(); await readPrivateProfiles(); } else if (S.settings.clubId) await clubLoad(); await window.ARROW_UI.wait(button);render();}catch(err){toast('Could not save: '+err.message);}finally{buttonBusy(button,false);} });
 document.addEventListener('click', (e) => { const b=e.target.closest('[data-act]'); if (!b) return; if (b.dataset.act === 'arrow-notify-enable' && 'Notification' in window) Notification.requestPermission().then((p)=>toast(p === 'granted' ? 'Notifications enabled' : 'Allow notifications in your browser')); if (b.dataset.act === 'arrow-friend') friendAction(b.dataset.uid,b.dataset.v).catch(()=>toast('Could not save your friend request')); if (b.dataset.act === 'arrow-day') calendarDay(b.dataset.d); if (b.dataset.act === 'arrow-notices') noticesSheet(); });
 
 /* Arrow mobile refresh: membership, onboarding and audience-aware social. */
@@ -2682,7 +2681,7 @@ function paintFeed() {
 }
 async function loadFeedPage() {
  if(FEED.busy||FEED.done||!FEED.ready||!socialOn()||UI.tab!=='home'||!CLUB.id)return;
- FEED.busy=true;FEED.error=false;const generation=FEED.generation,club=CLUB.id;
+ FEED.busy=true;FEED.error=false;const progressButton=document.querySelector('[data-act="feed-more"]');buttonBusy(progressButton,true);const generation=FEED.generation,club=CLUB.id;
  try{
   let result;
   if(mode==='local')result=localFeedPage(FEED.cursor);
@@ -2691,7 +2690,7 @@ async function loadFeedPage() {
   for(const post of result.posts||[])if(post&&post.id)FEED.raw.set(post.id,post);
   FEED.cursor=result.next;FEED.done=!result.next;await decryptFeed();
  }catch(e){if(generation===FEED.generation)FEED.error=true;}
- finally{if(generation===FEED.generation){FEED.busy=false;if(UI.tab==='home'){paintFeed();observeFeed();}}}
+ finally{await window.ARROW_UI.wait(progressButton);buttonBusy(progressButton,false);if(generation===FEED.generation){FEED.busy=false;if(UI.tab==='home'){paintFeed();observeFeed();}}}
 }
 function observeFeed() {
  if(FEED.observer)FEED.observer.disconnect();
@@ -2732,10 +2731,6 @@ async function attendanceSheet(date,manage) {
 }
 document.addEventListener('click',e=>{const b=e.target.closest('[data-act="attendance-open"]');if(b)attendanceSheet(b.dataset.date);});
 
-/* Delayed network progress avoids flashing on cached reads. */
-let networkPending=0,networkTimer;
-const appFetch=window.fetch.bind(window);
-window.fetch=async function(...args){networkPending++;clearTimeout(networkTimer);networkTimer=setTimeout(()=>{if(networkPending){let n=$('network-progress');if(!n){n=document.createElement('div');n.id='network-progress';n.setAttribute('role','status');n.setAttribute('aria-live','polite');n.innerHTML='<span class="button-spinner" aria-hidden="true"></span>Уншиж байна…';document.body.append(n);}n.hidden=false;}},180);try{return await appFetch(...args);}finally{if(--networkPending===0){clearTimeout(networkTimer);if($('network-progress'))$('network-progress').hidden=true;}}};
 /* ---------- boot ---------- */
 try { const t = localStorage.getItem("bjj-theme"); if (t && t !== "system") document.documentElement.dataset.theme = t; } catch (e) {}
 try { const l = localStorage.getItem("bjj-lang"); I18N.lang = l === "en" ? "en" : "mn"; } catch (e) { I18N.lang = "mn"; }
