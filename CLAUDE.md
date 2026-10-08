@@ -185,3 +185,21 @@ Discover sheet instead of a separate friends tab. The start/finish screens share
 accessible type cards, effort and audience radio choices; finish counters allow unnamed
 submission/tap/technique counts with optional details. Keep CLAUDE.md under this name.
 Verification adds `tests/feed-api.test.js` and `tests/arrow-v4-smoke.py` (fixtures only).
+
+### Coach membership and scheduled check-in
+
+Club `profile.admins` determines coach status: coaches are active without fee records in
+both app and console, and receive no self-payment prompt. Menu symbols are inline SVG.
+Attendance cards show counts first; a sheet shows attendee names and coach corrections.
+Saving a personal session never writes club attendance. QR and typed-code scans both use
+`api/check-in.js` in cloud mode and the shared `check-in.js` gate in local fixtures.
+The window is inclusive from class start minus 60 minutes through start plus 40 minutes;
+only the member's age track/all-age open mats count (coaches can attend any group).
+Club wall-clock time defaults to `Asia/Ulaanbaatar`; `profile.timezone` can override it.
+Adjacent-day checks support classes near midnight and attribute attendance to class date.
+The API uses server time, caller JWT, member DOB, and the club code, with conditional
+`updated_at` writes to protect concurrent scans. Repeat scans are idempotent. Existing
+Supabase shared-doc RLS is unchanged; this is the updated scan flow, not a migration
+restricting all legacy clients' direct writes. Coaches retain explicit manual corrections.
+Tests: `check-in-api.test.js` and `arrow-v5-smoke.py`; Playwright static fixture routing can
+run browser tests without a local HTTP server (Chromium still needs socket permissions).

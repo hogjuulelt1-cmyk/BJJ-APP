@@ -264,3 +264,19 @@ Object.assign(window.BJJ_LANG.mn.dict, {
  'More training':'Бусад бэлтгэлийг харах', 'Try again':'Дахин оролдох',
  'You’re all caught up':'Бүх бэлтгэлийг үзлээ', 'Decrease':'Багасгах', 'Increase':'Нэмэх'
 });
+
+Object.assign(window.BJJ_LANG.mn.dict,{
+ 'Coach · Active':'Коуч · Идэвхтэй','Coach membership':'Коучийн эрх',
+ 'Coaches do not pay membership fees.':'Коуч гишүүнчлэлийн төлбөр төлөхгүй.',
+ 'Coach membership is active. No payment required.':'Коучийн эрх идэвхтэй. Төлбөр төлөх шаардлагагүй.',
+ 'Payment exempt':'Төлбөрөөс чөлөөлөгдсөн','Membership status':'Гишүүнчлэлийн төлөв',
+ 'Checked in':'Ирсэн','Checked in today':'Өнөөдөр ирц бүртгэгдсэн',
+ 'Scan club QR':'Клубийн QR уншуулах','View names':'Нэрс харах',
+ 'No check-ins yet.':'Ирц бүртгэгдээгүй байна.','Manage attendance':'Ирц засах',
+ 'Could not load attendance':'Ирцийн мэдээллийг авч чадсангүй',
+ 'Could not check in':'Ирц бүртгэж чадсангүй',
+ 'QR check-in opens 60 minutes before class and closes 40 minutes after it starts.':'QR ирцийг хичээл эхлэхээс 60 минутын өмнөөс эхэлснээс 40 минутын дараа хүртэл бүртгэнэ.',
+ 'Green = club attendance. Red = a class day you missed.':'Ногоон = клубийн ирц. Улаан = тасалсан хичээлийн өдөр.',
+ 'Please scan again':'QR-ийг дахин уншуулаарай','Complete your date of birth':'Төрсөн өдрөө бүртгэнэ үү',
+ 'Club membership required':'Клубт нэгдсэн байх шаардлагатай'
+});

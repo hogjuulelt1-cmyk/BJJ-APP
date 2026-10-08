@@ -1,3 +1,4 @@
+from static_fixture import install
 import os,json,copy
 from datetime import date
 from urllib.parse import urlparse,parse_qs
@@ -6,7 +7,7 @@ exec(open('tests/arrow-smoke.py').read().split('with sync_playwright()')[0])
 url=os.environ.get('ARROW_TEST_URL','http://127.0.0.1:8080/')
 with sync_playwright() as p:
  b=p.chromium.launch(executable_path='/usr/bin/chromium',args=['--no-sandbox'])
- c=b.new_context(viewport={'width':1280,'height':900})
+ c=b.new_context(viewport={'width':1280,'height':900});install(c)
  prep=c.new_page();prep.goto(url+'arrow-core.js');prep.add_script_tag(path='arrow-core.js')
  crypto=prep.evaluate('async()=>{const key=await ARROW.newAgeKey();return{key,age:await ARROW.sealAge("2017-01-01",key.publicKey),profile:await ARROW.sealPayload({phone:"99112233",address:"Test address",social:"@test"},{local:key.publicKey})}}');prep.close()
  docs=copy.deepcopy(club);docs['club/test/profile']['fee']={'month':100000,'kidsMonth':50000};docs['club/test/profile']['ageKeys']={'local':crypto['key']['publicKey']}

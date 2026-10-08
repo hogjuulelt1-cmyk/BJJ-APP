@@ -58,5 +58,7 @@
     return end.getFullYear()+'-'+String(end.getMonth()+1).padStart(2,'0')+'-'+String(end.getDate()).padStart(2,'0');
   }
   const count = (items) => (items || []).reduce((n, x) => n + (Number(x && x.c) || 1), 0);
-  window.ARROW = { age, username, validUsername, newAgeKey, sealAge, openAge, sealPayload, openPayload, periodEnd, count };
+  const api = { age, username, validUsername, newAgeKey, sealAge, openAge, sealPayload, openPayload, periodEnd, count };
+  if (typeof module !== "undefined" && module.exports) module.exports = api;
+  else window.ARROW = api;
 })();

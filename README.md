@@ -94,3 +94,10 @@ plain static hosting supports local mode but does not run the cloud-feed API.
 Suggested member cards open searchable Discover. A sticky profile/menu header and six
 type cards are shared with refreshed start/finish controls. Run `node tests/feed-api.test.js`
 and the fixture-based Playwright `tests/arrow-v4-smoke.py` for pagination and UI checks.
+
+Coaches have an active, fee-exempt membership based on the club's registered coach IDs.
+QR/typed-code check-in is available from 60 minutes before a scheduled class through
+40 minutes after its start, using the club's time zone (Ulaanbaatar by default).
+The cloud endpoint validates server time and uses conditional writes for concurrent scans.
+Personal training is always available and is independent of club attendance. Attendance
+cards open named details on demand; coaches can correct the roster there.
