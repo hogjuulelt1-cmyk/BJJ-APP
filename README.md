@@ -71,3 +71,13 @@ Background push is not configured.
 
 Smoke check (requires Python Playwright and Chromium): serve this directory on port 8080,
 then run `python tests/arrow-smoke.py`. The test uses isolated local fixtures.
+
+### Mobile training and membership refresh
+
+Finish training has a totals summary, optional details and Public/Friends/Only me
+posting choices. Sharing provides three BJJ story frames, one photo picker and two
+export actions. Edit forms use the current mobile design and retain 50px photo cropping.
+Under-16 schedules and fees are separate; coaches alone edit belts in the app.
+Basic onboarding keeps contact details encrypted for coaches. Member payment requests
+use the date tapped and exact plan amount, with coach approval and day-based coverage.
+Coach notifications work while the app is open.

@@ -123,11 +123,8 @@ function normalize() {
 
 /* ---------- persistence ---------- */
 const dirty = {}, timers = {}, chains = {};
-function setSync(k, msg) {
-  const el = $("sync"); if (!el) return;
-  el.className = "sync " + (k === "local" ? "saving" : k);
-  $("sync-t").textContent = msg || { ok: "Synced", saving: "Saving…", local: "On this device", err: "Not saved" }[k];
-}
+function setSync() {}
+
 function save(key) {
   dirty[key] = 1; setSync(mode === "cloud" ? "saving" : "local");
   clearTimeout(timers[key]); timers[key] = setTimeout(() => flush(key), 600);
@@ -199,7 +196,7 @@ async function scanStart() {
   try {
     const need = !("BarcodeDetector" in window) && typeof jsQR !== "function"; const lib = need ? (SCAN_LIB.p || (SCAN_LIB.p = loadScript("vendor/jsQR.js?v=1"))) : null;
     const st = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment", width: { ideal: 1280 }, height: { ideal: 1280 } } }); v.srcObject = st; await v.play();
-    if (lib) { if (msg) msg.textContent = tr("Loading the scanner…"); await lib; } $("scan-box").classList.add("on"); if (msg) msg.textContent = tr("Point the camera at the club QR at the door.");
+    if (lib) { if (msg) msg.textContent = tr(""); await lib; } $("scan-box").classList.add("on"); if (msg) msg.textContent = tr("Point the camera at the club QR at the door.");
     SCAN = { st, det: "BarcodeDetector" in window ? new BarcodeDetector({ formats: ["qr_code"] }) : null, on: true }; scanLoop();
   } catch (e) { if (msg) msg.textContent = tr("Camera not available") + ". " + tr("Allow the camera in the browser settings, or type the code."); else toast("Camera not available"); }
 }
@@ -1051,7 +1048,7 @@ function trainedDays() { const d = new Set(S.log.items.map((s) => s.d)); for (co
 function streaks() {
   const days = trainedDays(); const today = todayIso(); let weeks = 0; let ws = mondayOf(today);
   for (let i = 0; i < 520; i++) { let hit = false; for (let j = 0; j < 7; j++) if (days.has(addDays(ws, j))) { hit = true; break; } if (!hit) { if (i === 0) { ws = addDays(ws, -7); continue; } break; } weeks++; ws = addDays(ws, -7); }
-  let classes = 0; const sched = (CLUB.profile && CLUB.profile.schedule) || []; const cdays = new Set(sched.map((x) => x.d));
+  let classes = 0; const sched = mySchedule(); const cdays = new Set(sched.map((x) => x.d));
   if (cdays.size) { let d = today; for (let i = 0; i < 400; i++) { const dow = (new Date(d + "T12:00:00").getDay() + 6) % 7; if (cdays.has(dow)) { if (days.has(d)) classes++; else if (d !== today) break; } d = addDays(d, -1); } }
   let run = 0; { let d = today; if (!days.has(d)) d = addDays(d, -1); while (days.has(d)) { run++; d = addDays(d, -1); } }
   return { weeks, classes, run, total: days.size };
@@ -1161,9 +1158,10 @@ function sessSheet(id, prefill) {
   /* prefill: a session-shaped object (from the live tracker, `live: true`) that fills a new session's form. */
   const s = id ? S.log.items.find((x) => x.id === id) : null; const f = s || prefill || {}; const fromLive = !s && !!(prefill && prefill.live);
   const body = () => {
-  let b = '<div class="grid2">' + field("f-d", "Date", inp("f-d", f.d || todayIso(), "date", 'max="' + todayIso() + '"')) + field("f-min", "Minutes", inp("f-min", f.min || 60, "number", 'inputmode="numeric" min="0" step="5"')) + "</div>";
+  let b = '<div class="session-intro"><span class="eyebrow">JIU-JITSU · ARROW</span><h3>Make every round count.</h3></div><div class="grid2">' + field("f-d", "Date", inp("f-d", f.d || todayIso(), "date", 'max="' + todayIso() + '"')) + field("f-min", "Minutes", inp("f-min", f.min || 60, "number", 'inputmode="numeric" min="0" step="5"')) + "</div>";
   b += '<div class="field"><span class="lbl">Type</span>' + chips("type", STYPES, f.type || "gi") + "</div>";
   b += '<div class="grid2">' + field("f-rolls", "Rounds (sparring)", inp("f-rolls", f.rolls != null ? f.rolls : "", "number", 'inputmode="numeric" min="0"')) + '<div class="field"><span class="lbl">How hard was it (1–5)</span>' + scale("rpe", f.rpe ? +f.rpe : 0, 1, 5) + "</div></div>";
+  b += '<div class="session-totals"><span><b>' + A.count(f.subs) + '</b>Submissions</span><span><b>' + A.count(f.taps) + '</b>Taps</span><span><b>' + A.count(f.tech) + '</b>Techniques</span></div><details class="edit-details"><summary>Techniques, partners and notes</summary>';
   if (CLUB.id && CLUB.members) { const me = myUid(); const ms = (CLUB.members.list || []).filter((m) => attKey(m) !== me).sort((a, b) => String(a.n || "").localeCompare(String(b.n || ""))); const sel = (UI.sheet && UI.sheet.with) || f.with || []; if (ms.length) b += '<div class="field"><span class="lbl">Rolled with</span><div class="chips">' + ms.map((m) => '<button type="button" class="chip' + (sel.includes(attKey(m)) ? " on" : "") + '" data-act="with-toggle" data-who="' + attKey(m) + '">' + esc(m.n || m.email || "Member") + "</button>").join("") + "</div></div>"; }
   b += picker("tech", "Techniques drilled", "mv", { ph: "Search techniques…" });
   b += picker("subs", "I finished", "sub", { ph: "Add a submission…", counts: true });
@@ -1171,17 +1169,19 @@ function sessSheet(id, prefill) {
   b += field("f-good", "What went well", ta("f-good", f.good || "", ""));
   b += field("f-bad", "What did not work, what to fix", ta("f-bad", f.bad || "", ""));
   b += field("f-note", "Notes", ta("f-note", f.note || "", ""));
+  b += "</details>" + (socialOn() ? '<div class="audience-panel"><span class="lbl">Post visibility</span>' + chips("audience", [["public","Public feed"],["friends","Friends only"],["private","Only me"]], f.audience || "public") + '<p class="muted small">Public feed: your club. Friends: accepted friends.</p></div>' : "");
   return b; };
   openSheet(s ? "Edit training" : fromLive ? "Finish training" : "Log training", body, {
-    state: { picks: { type: f.type || "gi", rpe: f.rpe ? +f.rpe : 0 }, with: clone(f.with || []), pk: { tech: clone(f.tech || []), subs: clone(f.subs || []), taps: clone(f.taps || []) } },
+    saveLabel: "Save session", state: { picks: { type: f.type || "gi", rpe: f.rpe ? +f.rpe : 0, audience: f.audience || "public" }, with: clone(f.with || []), pk: { tech: clone(f.tech || []), subs: clone(f.subs || []), taps: clone(f.taps || []) } },
     onSave() {
       const d = sv("f-d"); if (!d || d > todayIso()) { toast("Check the date"); return false; }
       const min = +sv("f-min"); if (!min) { $("f-min").focus(); return false; }
       const rec = s || { id: uid() }; const old = s ? s.d : "";
       rec.d = d; rec.min = min; rec.type = pickVal("type", "gi"); rec.rolls = +sv("f-rolls") || 0; rec.rpe = pickVal("rpe", 0);
       rec.tech = UI.sheet.pk.tech || []; rec.subs = UI.sheet.pk.subs || []; rec.taps = UI.sheet.pk.taps || [];
+      rec.audience = socialOn() ? pickVal("audience", "public") : "private";
       rec.good = sv("f-good").trim(); rec.bad = sv("f-bad").trim(); rec.note = sv("f-note").trim(); rec.with = (UI.sheet.with || []).slice();
-      if (!s) S.log.items.push(rec); save("log"); if (fromLive) liveClear(); if (CLUB.id) { attMark(rec.d, true).then(() => { if (UI.tab === "club") render(); }); rollsShare(rec); feedPost(rec); } toast("Training saved"); render(); setTimeout(() => shareSheet(rec.id, fromLive ? "story" : null), 450); return true;
+      if (!s) S.log.items.push(rec); save("log"); if (fromLive) liveClear(); if (CLUB.id) { attMark(rec.d, true).then(() => { if (UI.tab === "club") render(); }); rollsShare(rec); feedPost(rec).catch(()=>toast("Could not publish the session")); } toast("Training saved"); render(); setTimeout(() => shareSheet(rec.id, fromLive ? "story" : null), 450); return true;
     },
     onDelete: s ? () => { S.log.items = S.log.items.filter((x) => x.id !== s.id); save("log"); feedRemove(s.id, s.d); toast("Deleted"); render(); return true; } : null,
   });
@@ -1307,6 +1307,7 @@ function vBeltGoalsHistory(track, cur) {
   return h;
 };
 function promoSheet(id) {
+  if (!isAdmin()) return;
   const x = S.belt.history.find((h) => h.id === id); if (!x) return;
   openSheet("Promotion", field("f-d", "Date", inp("f-d", x.d, "date", 'max="' + todayIso() + '"')) + field("f-note", "Note", inp("f-note", x.note || "", "text")), {
     onSave() { x.d = sv("f-d") || x.d; x.note = sv("f-note").trim(); save("belt"); render(); return true; },
@@ -1314,6 +1315,7 @@ function promoSheet(id) {
   });
 }
 function beltSheet(promo) {
+  if (!isAdmin()) { toast("Your coach manages your belt"); return; }
   const track = S.belt.track; const ladder = SEED.belts[track];
   const b = () => '<div class="field"><span class="lbl">Ladder</span>' + chips("track", [["kids", "Kids"], ["adult", "Adult"]], pickVal("track", track)) + "</div>" +
     field("f-belt", "Belt", '<select id="f-belt">' + SEED.belts[pickVal("track", track)].map((x) => '<option value="' + x.id + '"' + (x.id === S.belt.belt ? " selected" : "") + ">" + esc(x.n) + "</option>").join("") + "</select>") +
@@ -1746,7 +1748,7 @@ function vLeaderboard() {
 }
 VIEWS.home = function () {
   let h = liveOn() ? liveCard() + weekCard() : weekCard() + liveCard();
-  if (S.settings.clubId && clubNeeds()) { if (!CLUB.busy) clubLoad(); return h + '<div class="card"><p class="empty">Loading your club…</p></div>'; }
+  if (S.settings.clubId && clubNeeds()) { if (!CLUB.busy) clubLoad(); return h + '<div class="card"><p class="empty"></p></div>'; }
   h += seg([["feed", "Feed"], ["lead", "Leaderboard"]], UI.homeSeg, "homeseg");
   if (UI.homeSeg === "lead") return h + vLeaderboard();
   const posts = CLUB.id ? CLUB.feed || [] : sessionsSorted().slice(0, 20).map(feedPostOf);
@@ -1809,7 +1811,7 @@ async function clubUpdateMe() {
   if (!m && email) { m = CLUB.members.list.find((x) => !x.uid && (x.email || "").toLowerCase() === email); if (m) m.uid = me; }
   if (!m) { m = { id: uid(), uid: me, since: todayIso() }; CLUB.members.list.push(m); }
   if (!m.id) m.id = uid();
-  if (m.coachSet) { // the coach's record wins
+  if (m.coachSet || !isAdmin()) { // only a coach may assign belts
     if (m.belt) S.belt.belt = m.belt; S.belt.stripes = +m.stripes || 0; if (m.track) S.belt.track = m.track; if (m.beltSince) S.belt.since = m.beltSince; S.belt.byCoach = true; save("belt");
   } else { m.belt = S.belt.belt; m.stripes = S.belt.stripes; m.track = S.belt.track; }
   if (!m.coachSet || !m.n) m.n = myName(); m.av = S.settings.avatar || ""; m.email = SB.session ? SB.session.email : (m.email || "");
@@ -1824,9 +1826,9 @@ function memberSheet(id) {
     (m && m.uid ? '<p class="muted small">Login: ' + esc(loginName(m.email)) + "</p>" : (mode === "cloud" ? '<p class="lbl" style="margin-top:4px">Create their login (optional)</p><div class="grid2">' + field("m-login", "Username", inp("m-login", "", "text", 'autocapitalize="none" placeholder="bat"')) + field("m-pw", "Password (6+)", inp("m-pw", "", "text", 'autocomplete="new-password"')) + "</div>" + field("m-dob", "Date of birth (private)", inp("m-dob", "", "date", 'max="' + todayIso() + '"')) : ""));
   openSheet(m ? "Edit member" : "Add a member", b, { state: { picks: { track, stripes: m ? +m.stripes || 0 : 0, comp: m && m.comp ? "yes" : "no" } }, onDelete: m ? async () => { CLUB.members.list = CLUB.members.list.filter((x) => x !== m); await cset("club/" + CLUB.id + "/members", CLUB.members); render(); return true; } : null, async onSave() {
     const n = sv("m-n").trim(); if (!n) { $("m-n").focus(); return false; }
-    const rec = m || { id: uid(), uid: null }; rec.n = n; rec.email = sv("m-email").trim(); rec.phone = sv("m-phone").trim(); rec.track = pickVal("track", "adult"); rec.belt = sv("f-belt"); rec.stripes = +pickVal("stripes", 0); rec.beltSince = sv("m-since"); rec.since = sv("m-joined") || todayIso(); rec.comp = pickVal("comp", "no") === "yes"; rec.coachSet = true; rec.setBy = myUid();
+    const rec = m || { id: uid(), uid: null }; rec.n = n; rec.email = sv("m-email").trim(); const phone = sv("m-phone").trim(); if (phone) { const old = await A.openPayload(rec.privateProfile,myUid(),((S.settings.coachAgeKeys||{})[CLUB.id]||{}).privateKey)||{}; rec.privateProfile = await A.sealPayload(Object.assign(old,{phone}),coachPublicKeys()); } delete rec.phone; rec.track = pickVal("track", "adult"); rec.belt = sv("f-belt"); rec.stripes = +pickVal("stripes", 0); rec.beltSince = sv("m-since"); rec.since = sv("m-joined") || todayIso(); rec.comp = pickVal("comp", "no") === "yes"; rec.coachSet = true; rec.setBy = myUid();
     const login = sv("m-login").trim(), pw = sv("m-pw"); if (!(m && m.uid) && login && mode === "cloud") { if (pw.length < 6) { toast("Password needs 6+ characters"); return false; } try { rec.email = emailOf(login); const dob = sv("m-dob"); if (A.age(dob) === null || !A.validUsername(login)) { toast("Enter a valid username and date of birth"); return false; } const u = await SB.createUser(rec.email, pw, n, dob, A.username(login)); rec.uid = u.id; rec.username = A.username(login); rec.socialAllowed = A.age(dob) >= 13; await sealMemberAge(rec, dob); } catch (e) { toast("Could not create the login: " + e.message); return false; } }
-    if (!m) CLUB.members.list.push(rec); await cset("club/" + CLUB.id + "/members", CLUB.members); toast(m ? "Saved" : "Member added · they sign up with this email and the club code"); if (rec.uid === myUid()) { S.belt.belt = rec.belt; S.belt.stripes = rec.stripes; S.belt.track = rec.track; S.belt.byCoach = true; save("belt"); } render(); return true;
+    if (!m) CLUB.members.list.push(rec); await cset("club/" + CLUB.id + "/members", CLUB.members); await readPrivateProfiles(); toast(m ? "Saved" : "Member added · they sign up with this email and the club code"); if (rec.uid === myUid()) { S.belt.belt = rec.belt; S.belt.stripes = rec.stripes; S.belt.track = rec.track; S.belt.byCoach = true; save("belt"); } render(); return true;
   } });
 }
 /* attendance: club/<id>/att/<yyyy-mm> = { days: { "2026-10-06": [uid, …] } } */
@@ -1838,7 +1840,7 @@ async function attMark(date, on, who) {
   await cset("club/" + CLUB.id + "/att/" + ym, CLUB.att.doc); if (ym === thisMonth()) CLUB.attMonth = CLUB.att.doc;
 }
 function attDays(doc, who) { const out = []; for (const d in (doc && doc.days) || {}) if (doc.days[d].includes(who)) out.push(d); return out.sort(); }
-function classDays(ym) { const sched = (CLUB.profile && CLUB.profile.schedule) || []; const days = new Set(sched.map((x) => x.d)); const y = +ym.slice(0, 4), mo = +ym.slice(5); const out = []; for (let d = 1; d <= 31; d++) { const dt = new Date(y, mo - 1, d); if (dt.getMonth() !== mo - 1) break; if (days.has((dt.getDay() + 6) % 7)) out.push(ym + "-" + pad(d)); } return out; }
+function classDays(ym) { const sched = mySchedule(); const days = new Set(sched.map((x) => x.d)); const y = +ym.slice(0, 4), mo = +ym.slice(5); const out = []; for (let d = 1; d <= 31; d++) { const dt = new Date(y, mo - 1, d); if (dt.getMonth() !== mo - 1) break; if (days.has((dt.getDay() + 6) % 7)) out.push(ym + "-" + pad(d)); } return out; }
 function attCalendar(who, ym) {
   const doc = ym === thisMonth() ? CLUB.attMonth : (CLUB.att && CLUB.att.ym === ym ? CLUB.att.doc : null); const went = new Set(attDays(doc, who)); const cls = new Set(classDays(ym)); const today = todayIso();
   const y = +ym.slice(0, 4), mo = +ym.slice(5); const first = new Date(y, mo - 1, 1); const lead = (first.getDay() + 6) % 7; let cells = ""; for (let i = 0; i < lead; i++) cells += "<i></i>";
@@ -1884,7 +1886,7 @@ function planOf(id) { return clubPlans(CLUB.profile).find((p) => p.id === id) ||
 function addMonth(ym, n) { const d = new Date(+ym.slice(0, 4), +ym.slice(5) - 1 + n, 1); return d.getFullYear() + "-" + pad(d.getMonth() + 1); }
 /* one label for a payment item or a group of items: Drop-in · 3 months · plan name */
 function payLabel(x, n) { if (x.drop) return "Drop-in"; if (n > 1) return n + " months"; const p = x.plan && planOf(x.plan); return p ? planName(p) : ""; }
-function payGroups(items) { const out = []; items.forEach((x) => { const g = x.group && out.find((o) => o.group === x.group); if (g) { g.items.push(x); g.amt += +x.amt || 0; if (x.per > g.to) g.to = x.per; if (x.per < g.per) g.per = x.per; } else out.push({ id: x.id, group: x.group, items: [x], amt: +x.amt || 0, per: x.per, to: x.per, d: x.d, note: x.note, status: x.status, drop: x.drop, plan: x.plan }); }); return out; }
+function payGroups(items) { const out = []; items.forEach((x) => { const g = x.group && out.find((o) => o.group === x.group); if (g) { g.items.push(x); g.amt += +x.amt || 0; if (x.per > g.to) g.to = x.per; if (x.per < g.per) g.per = x.per; } else out.push({ id: x.id, group: x.group, items: [x], amt: +x.amt || 0, per: x.per, to: x.per, d: x.d, note: x.note, status: x.status, drop: x.drop, plan: x.plan, start: x.start, end: x.end }); }); return out; }
 /* bank details block (.payhow); copy = add the "Copy account" button */
 function payHow(P, copy) {
   const pay = P.pay || {}; if (!(pay.bank || pay.account || pay.qpay)) return '<p class="small muted">The coach has not added payment details yet. Pay at the club, then tap “I have paid” so it shows up here.</p>';
@@ -1896,7 +1898,7 @@ function nextOpenMat(sched) {
   return best ? (best.diff === 0 ? "Today " : best.diff === 1 ? "Tomorrow " : DAYS[best.x.d] + " ") + best.x.t : null;
 }
 VIEWS.club = function () {
-  if (clubNeeds()) { if (!CLUB.busy) clubLoad(); return '<div class="card"><p class="empty">Loading your club…</p></div>'; }
+  if (clubNeeds()) { if (!CLUB.busy) clubLoad(); return '<div class="card"><p class="empty"></p></div>'; }
   if (CLUB.err) return '<div class="card"><p class="empty">' + esc(CLUB.err) + '</p><button class="btn ghost wide" data-act="club-reload">Try again</button></div>';
   let h = isSuper() ? vAppAdmin() : "";
   if (!CLUB.id) {
@@ -1933,7 +1935,7 @@ function vClubSched(P, adm) {
 }
 /* open mats across every club in the index */
 function vOpenMats(skipId) {
-  if (!CLUB.all) { if (!CLUB.allBusy) { CLUB.allBusy = true; (async () => { const out = []; for (const row of ((CLUB.index && CLUB.index.list) || []).filter((x) => x.status !== "pending")) { const p = await cget("club/" + row.id + "/profile"); if (p) out.push(p); } CLUB.all = out; CLUB.allBusy = false; if (UI.tab === "club") render(); })(); } return '<div class="card"><div class="card-head"><h3>Open mats around town</h3></div><p class="empty">Loading…</p></div>'; }
+  if (!CLUB.all) { if (!CLUB.allBusy) { CLUB.allBusy = true; (async () => { const out = []; for (const row of ((CLUB.index && CLUB.index.list) || []).filter((x) => x.status !== "pending")) { const p = await cget("club/" + row.id + "/profile"); if (p) out.push(p); } CLUB.all = out; CLUB.allBusy = false; if (UI.tab === "club") render(); })(); } return '<div class="card"><div class="card-head"><h3>Open mats around town</h3></div><p class="empty"></p></div>'; }
   const today = (new Date().getDay() + 6) % 7; const items = []; for (const p of CLUB.all) for (const x of p.schedule || []) if (x.kind === "open") items.push({ p, x });
   items.sort((a, b) => ((a.x.d - today + 7) % 7) - ((b.x.d - today + 7) % 7) || (a.x.t < b.x.t ? -1 : 1));
   let h = '<div class="card"><div class="card-head"><h3>Open mats around town</h3><span class="muted small">' + items.length + " this week</span></div>";
@@ -1956,7 +1958,7 @@ function clubEventSheet(id) {
 }
 /* Today: notices, check-in, my month, medals */
 function vClubToday(P, adm) {
-  const me = myUid(); const today = todayIso(); const dow = (new Date().getDay() + 6) % 7; const todays = (P.schedule || []).filter((x) => x.d === dow).sort((a, b) => (a.t < b.t ? -1 : 1));
+  const me = myUid(); const today = todayIso(); const dow = (new Date().getDay() + 6) % 7; const todays = mySchedule().filter((x) => x.d === dow).sort((a, b) => (a.t < b.t ? -1 : 1));
   const here = !!(CLUB.attMonth && CLUB.attMonth.days[today] && CLUB.attMonth.days[today].includes(me)); const cal = attCalendar(me, thisMonth());
   let h = '<div class="card"><div class="card-head"><h3>Today</h3><span class="muted small">' + (todays.length ? todays.map((x) => x.t + " " + (x.n || KIND[x.kind])).join(" · ") : "no class scheduled") + "</span></div>" +
     '<button class="btn ' + (here ? "ghost" : "") + ' wide" data-act="att-me">' + (here ? "✓ On the mat today · tap to undo" : "I’m on the mat today") + "</button>" + streakLine() + "</div>";
@@ -2000,7 +2002,7 @@ function vClubPay(P, adm) {
   if (plans.length) h += '<div class="plans">' + plans.map((p) => '<button type="button" class="planc' + (sel && sel.id === p.id ? " on" : "") + '" data-act="pay-plan" data-v="' + esc(p.id) + '" aria-pressed="' + (sel && sel.id === p.id) + '"><b>' + esc(planName(p)) + "</b>" + (() => { const ml = p.kind === "drop" || !p.months ? "1 class" : p.months === 1 ? "1 month" : p.months + " months"; return p.n ? "<small>" + ml + "</small>" : p.months > 1 ? "" : "<small>" + ml + "</small>"; })() + '<span class="price">' + fmtMoney(p.price) + "</span>" + (p.months > 1 ? "<small>per month ≈ " + fmtMoney(Math.round(p.price / p.months)) + "</small>" : "") + "</button>").join("") + "</div>";
   else h += '<p class="muted small">The coach has not set the fee yet.</p>';
   if (!mine.length) h += '<p class="empty">No payments yet. Pay the monthly fee here and your coach confirms it.</p>';
-  else h += '<div class="list">' + mine.map((x) => { const n = x.items.length; const lb = payLabel(x, n); return '<button class="row" data-act="club-pay" data-id="' + x.id + '"><span class="pill ' + (x.status === "pending" ? "na" : "ok") + '">' + (x.status === "pending" ? "sent" : "confirmed") + '</span><div class="txt"><b>' + fmtMoney(x.amt) + " · " + (x.drop ? esc(tr(lb)) : n > 1 ? esc(tr(lb)) : esc(x.per)) + "</b><small>" + (n > 1 ? esc(x.per) + " → " + esc(x.to) + " · " : "") + fmtD(x.d) + (lb && !x.drop && n === 1 ? " · " + esc(tr(lb)) : "") + (x.note ? " · " + esc(x.note) : "") + "</small></div>" + CHEV + "</button>"; }).join("") + "</div>";
+  else h += '<div class="list">' + mine.map((x) => { const n = x.items.length; const lb = payLabel(x, n); return '<button class="row" data-act="club-pay" data-id="' + x.id + '"><span class="pill ' + (x.status === "pending" ? "na" : "ok") + '">' + (x.status === "pending" ? "sent" : "confirmed") + '</span><div class="txt"><b>' + fmtMoney(x.amt) + " · " + (x.drop ? esc(tr(lb)) : n > 1 ? esc(tr(lb)) : esc(x.per)) + "</b><small>" + (n > 1 ? esc(x.per) + " → " + esc(x.to) + " · " : "") + (x.start ? esc(x.start) + " → " + esc(x.end) : fmtD(x.d)) + (lb && !x.drop && n === 1 ? " · " + esc(tr(lb)) : "") + (x.note ? " · " + esc(x.note) : "") + "</small></div>" + CHEV + "</button>"; }).join("") + "</div>";
   if (sel) h += '<button class="btn wide" data-act="club-paynow">' + "Pay " + fmtMoney(sel.price) + " · " + esc(tr(planName(sel))) + "</button>";
   h += "</div>";
   h += '<div class="card"><div class="card-head"><h3>Bank details</h3></div>' + payHow(P, true) + "</div>";
@@ -2082,7 +2084,7 @@ function vClubMembers(P, adm) {
   h += "</div>";
   if (adm) {
     const date = UI.attDate || today; const ym = date.slice(0, 7); const doc = ym === thisMonth() ? CLUB.attMonth : (CLUB.att && CLUB.att.ym === ym ? CLUB.att.doc : null); const here = (doc && doc.days[date]) || [];
-    h += '<div class="card"><div class="card-head"><h3>Attendance</h3><input id="att-date" type="date" value="' + date + '" max="' + today + '" style="width:auto;min-height:36px;padding:4px 8px"></div>' + (doc ? '<div class="list">' + all.slice().sort((a, b) => String(a.n || "").localeCompare(String(b.n || ""))).map((m) => '<button class="row" data-act="att-tick" data-who="' + attKey(m) + '" data-date="' + date + '"><span class="check' + (here.includes(attKey(m)) ? " on" : "") + '">' + CHECK + '</span><div class="txt"><b>' + esc(m.n || m.email || "Member") + "</b></div></button>").join("") + "</div><p class=\"muted small\">" + here.length + " on the mat</p>" : '<p class="empty">Loading…</p>') + "</div>";
+    h += '<div class="card"><div class="card-head"><h3>Attendance</h3><input id="att-date" type="date" value="' + date + '" max="' + today + '" style="width:auto;min-height:36px;padding:4px 8px"></div>' + (doc ? '<div class="list">' + all.slice().sort((a, b) => String(a.n || "").localeCompare(String(b.n || ""))).map((m) => '<button class="row" data-act="att-tick" data-who="' + attKey(m) + '" data-date="' + date + '"><span class="check' + (here.includes(attKey(m)) ? " on" : "") + '">' + CHECK + '</span><div class="txt"><b>' + esc(m.n || m.email || "Member") + "</b></div></button>").join("") + "</div><p class=\"muted small\">" + here.length + " on the mat</p>" : '<p class="empty"></p>') + "</div>";
     const pend = ((CLUB.results && CLUB.results.list) || []).filter((r) => r.status !== "ok");
     if (pend.length) h += '<div class="card"><div class="card-head"><h3>Medals to approve</h3><span class="muted small">' + pend.length + '</span></div><div class="list">' + pend.map((r) => '<div class="row"><span class="medal ' + r.medal + '"></span><div class="txt"><b>' + esc(r.n) + " · " + r.medal + "</b><small>" + esc(r.event) + " · " + fmtD(r.d) + (r.div ? " · " + esc(r.div) : "") + '</small></div><button class="btn" style="flex:none" data-act="res-ok" data-id="' + r.id + '">Approve</button><button class="x" data-act="res-no" data-id="' + r.id + '">✕</button></div>').join("") + "</div></div>";
     const board = ((CLUB.results && CLUB.results.list) || []).filter((r) => r.status === "ok").sort((a, b) => (a.d < b.d ? 1 : -1)).slice(0, 10);
@@ -2096,12 +2098,12 @@ function clubSheet(edit) {
   const P = edit ? CLUB.profile : {}; const fee = P.fee || {};
   const b = field("c-n", "Club name", inp("c-n", P.n || "", "text", 'autofocus placeholder="e.g. Ulaanbaatar BJJ"')) + '<div class="grid2">' + field("c-city", "City", inp("c-city", P.city || "", "text")) + field("c-coach", "Head coach", inp("c-coach", P.coach || "", "text")) + "</div>" +
     field("c-addr", "Address", inp("c-addr", P.addr || "", "text")) + '<div class="grid2">' + field("c-phone", "Phone", inp("c-phone", P.phone || "", "tel")) + field("c-ig", "Instagram", inp("c-ig", P.ig || "", "text", 'placeholder="@club"')) + "</div>" +
-    '<div class="grid2">' + field("c-fm", "Monthly fee (₮)", inp("c-fm", fee.month || "", "number", 'inputmode="numeric"')) + field("c-fd", "Drop-in fee (₮)", inp("c-fd", fee.drop || "", "number", 'inputmode="numeric"')) + "</div>" + field("c-about", "About", ta("c-about", P.about || "", "Style, who trains here, what to bring…")) +
+    '<div class="grid2">' + field("c-fm", "Monthly fee (₮)", inp("c-fm", fee.month || "", "number", 'inputmode="numeric"')) + field("c-fd", "Adult drop-in (₮)", inp("c-fd", fee.drop || "", "number", 'inputmode="numeric"')) + "</div><div class=\"grid2\">" + field("c-km", "Kids monthly fee (₮)", inp("c-km", fee.kidsMonth || "", "number")) + field("c-kd", "Kids drop-in (₮)", inp("c-kd", fee.kidsDrop || "", "number")) + "</div>" + field("c-about", "About", ta("c-about", P.about || "", "Style, who trains here, what to bring…")) +
     '<p class="lbl" style="margin-top:4px">How members pay you</p><div class="grid2">' + field("c-bank", "Bank", inp("c-bank", (P.pay || {}).bank || "", "text")) + field("c-acc", "Account", inp("c-acc", (P.pay || {}).account || "", "text")) + "</div><div class=\"grid2\">" + field("c-holder", "Name on account", inp("c-holder", (P.pay || {}).holder || "", "text")) + field("c-qpay", "QPay", inp("c-qpay", (P.pay || {}).qpay || "", "text")) + "</div>" + field("c-pnote", "Payment note", inp("c-pnote", (P.pay || {}).note || "", "text", 'placeholder="Write your name in the transfer"')) +
     '<p class="lbl" style="margin-top:4px">Subscription options</p><p class="small muted" style="margin:0">Name, months and price. 0 months = drop-in. Leave empty to offer 1, 3 and 6 months from the monthly fee.</p><div id="c-plans"></div>';
   openSheet(edit ? "Edit club" : "Register a club", b, { state: { plans: (P.plans || []).map((p) => Object.assign({}, p)) }, saveLabel: edit ? "Save" : "Create club", async onSave() {
     const n = sv("c-n").trim(); if (!n) { $("c-n").focus(); return false; }
-    const rec = Object.assign(edit ? CLUB.profile : { id: uid(), admins: [myUid()], schedule: [], created: todayIso(), status: isSuper() ? "approved" : "pending", by: myUid(), code: genCode(6), coachCode: genCode(8), open: false }, { n, city: sv("c-city").trim(), coach: sv("c-coach").trim(), addr: sv("c-addr").trim(), phone: sv("c-phone").trim(), ig: sv("c-ig").trim(), about: sv("c-about").trim(), fee: { month: +sv("c-fm") || 0, drop: +sv("c-fd") || 0 }, pay: { bank: sv("c-bank").trim(), account: sv("c-acc").trim(), holder: sv("c-holder").trim(), qpay: sv("c-qpay").trim(), note: sv("c-pnote").trim() }, plans: planRead().filter((p) => p.price > 0) });
+    const rec = Object.assign(edit ? CLUB.profile : { id: uid(), admins: [myUid()], schedule: [], created: todayIso(), status: isSuper() ? "approved" : "pending", by: myUid(), code: genCode(6), coachCode: genCode(8), open: false }, { n, city: sv("c-city").trim(), coach: sv("c-coach").trim(), addr: sv("c-addr").trim(), phone: sv("c-phone").trim(), ig: sv("c-ig").trim(), about: sv("c-about").trim(), fee: { month: +sv("c-fm") || 0, drop: +sv("c-fd") || 0, kidsMonth: +sv("c-km") || 0, kidsDrop: +sv("c-kd") || 0 }, pay: { bank: sv("c-bank").trim(), account: sv("c-acc").trim(), holder: sv("c-holder").trim(), qpay: sv("c-qpay").trim(), note: sv("c-pnote").trim() }, plans: planRead().filter((p) => p.price > 0) });
     try {
       await cset("club/" + rec.id + "/profile", rec);
       const idx = (await cget("clubs/index")) || { list: [] }; const i = idx.list.findIndex((x) => x.id === rec.id); const row = { id: rec.id, n: rec.n, city: rec.city, status: rec.status || "approved", by: rec.by, open: !!rec.open }; if (i >= 0) idx.list[i] = row; else idx.list.push(row); await cset("clubs/index", idx);
@@ -2282,11 +2284,11 @@ document.addEventListener("click", async (e) => {
     case "add-routine": routineSheet(); break;
     case "edit-routine": routineSheet(ds.id); break;
     case "del-routine": if (armConfirm(ds.key)) { S.body.routines = S.body.routines.filter((r) => r.id !== ds.id); save("body"); render(); } break;
-    case "belttrack": S.belt.track = ds.v; if (!SEED.belts[ds.v].some((b) => b.id === S.belt.belt)) S.belt.belt = "white"; save("belt"); render(); break;
-    case "add-promo": beltSheet(true); break;
+    case "belttrack": if (!isAdmin()) break; S.belt.track = ds.v; if (!SEED.belts[ds.v].some((b) => b.id === S.belt.belt)) S.belt.belt = "white"; save("belt"); render(); break;
+    case "add-promo": if (isAdmin()) memberSheet(myUid()); break;
     case "edit-promo": promoSheet(ds.id); break;
     case "edit-weight": weightSheet(ds.id); break;
-    case "edit-belt": beltSheet(false); break;
+    case "edit-belt": if (isAdmin()) memberSheet(myUid()); break;
     case "del-promo": if (armConfirm(ds.key)) { S.belt.history = S.belt.history.filter((x) => x.id !== ds.id); save("belt"); render(); } break;
     case "goal-toggle": { const g = (S.belt.goals[S.belt.belt] || []).find((x) => x.id === ds.id); if (g) { g.done = !g.done; save("belt"); render(); } break; }
     case "del-goal": if (armConfirm(ds.key)) { S.belt.goals[S.belt.belt] = (S.belt.goals[S.belt.belt] || []).filter((x) => x.id !== ds.id); save("belt"); render(); } break;
@@ -2337,10 +2339,10 @@ const normalizeBase = normalize;
 normalize = function () { normalizeBase(); const ss = SB.session || {}; if (!S.settings.birthDate && ss.birthDate) S.settings.birthDate = ss.birthDate; if (!S.settings.username) S.settings.username = ss.username || A.username(loginName(ss.email || '')); };
 myHandle = function () { return S.settings.username || A.username(loginName((SB.session || {}).email || '')) || 'me'; };
 const renderBase = render;
-render = function (anim) { if (myAge() === null) { renderHeader(); renderTabs(); $('main').innerHTML = ageGate(); return; } renderBase(anim); updateNoticeBadge(); };
+render = function (anim) { if (myAge() === null || !contactComplete()) { renderHeader(); renderTabs(); $('main').innerHTML = onboardingForm(); return; } if (clubNeeds() && !CLUB.busy) clubLoad(); renderBase(anim); updateNoticeBadge(); };
 renderHeader = function () { const el = $('hdr-av'); if (el) el.innerHTML = avatarInner(myName(), S.settings.avatar); $('title').textContent = 'Arrow'; };
 const syncBase = setSync;
-setSync = function (k, msg) { syncBase(k, msg); $('sync').hidden = k === 'ok' || k === 'local'; };
+setSync = function () { const el = $('sync'); if (el) el.remove(); };
 function privateAgeSummary(m) { const n = CLUB.privateAges && CLUB.privateAges[m.uid || m.id]; return n == null ? 'Age not shared yet' : n + ' нас'; }
 async function prepareCoachAgeKey() {
   if (!isAdmin()) return;
@@ -2367,6 +2369,9 @@ clubUpdateMe = async function () {
   const m = CLUB.members.list.find((x) => x.uid === myUid()); if (!m) return;
   m.username = myHandle(); m.socialAllowed = socialOn();
   if (myAge() !== null) await sealMemberAge(m, S.settings.birthDate);
+  m.track = myTrack();
+  if (contactComplete()) m.privateProfile = await A.sealPayload({phone:S.settings.phone,address:S.settings.address,social:S.settings.socialAddress || ''}, coachPublicKeys());
+  if (socialOn()) { if (!S.settings.socialKey) { S.settings.socialKey = await A.newAgeKey(); save('settings'); } m.socialPublicKey = S.settings.socialKey.publicKey; }
   await cset('club/' + CLUB.id + '/members', CLUB.members);
 };
 const clubLoadBase = clubLoad;
@@ -2376,21 +2381,21 @@ clubLoad = async function () {
   try {
     await prepareCoachAgeKey();
     if (myAge() !== null) await clubUpdateMe();
-    await readCoachAges();
+    await readCoachAges(); await readPrivateProfiles();
     CLUB.friends = socialOn() ? (await cget('club/' + CLUB.id + '/friends')) || { list: [] } : { list: [] };
-    checkNotices(); render();
+    await decryptFeed(); checkNotices(); render();
   } catch (e) { toast('Could not update your club profile'); console.warn(e); }
 };
 profileEditSheet = function () {
-  const body = '<div class="avpick"><span class="av xl" id="pf-av">' + avatarInner(myName(), S.settings.avatar) + '</span><div class="avpick-b"><label for="pf-photo" class="btn ghost">Choose a photo</label><input id="pf-photo" type="file" accept="image/*"><button class="btn ghost" data-act="avatar-rm">Remove photo</button></div></div>' +
+  const body = '<div class="avpick"><span class="av xl" id="pf-av">' + avatarInner(myName(), S.settings.avatar) + '</span><div class="avpick-b"><label for="pf-photo" class="btn ghost">Choose a photo</label><input id="pf-photo" type="file" accept="image/*" hidden><button class="btn ghost" data-act="avatar-rm"' + (S.settings.avatar ? '' : ' hidden') + '>Remove photo</button></div></div>' +
     '<div id="pf-crop" class="profile-crop"></div>' + field('f-name', 'Real name (for your coach)', inp('f-name', S.settings.name || '', 'text', 'required autocomplete="name" placeholder="Бат-Эрдэнэ"')) +
-    field('f-username', 'Social username', inp('f-username', myHandle(), 'text', 'required autocapitalize="none" pattern="[a-z0-9][a-z0-9._-]{2,29}"')) + ageFields('pf') + field('f-bio', 'Bio', ta('f-bio', S.settings.bio || '', ''));
+    field('f-username', 'Social username', inp('f-username', myHandle(), 'text', 'required autocapitalize="none" pattern="[a-z0-9][a-z0-9._-]{2,29}"')) + ageFields('pf') + field('f-bio', 'Bio', ta('f-bio', S.settings.bio || '', '')) + contactFields();
   openSheet('Edit profile', body, { state: { av: S.settings.avatar || '' }, saveLabel: 'Done', async onSave() {
-    if (UI.sheet.photoLoading) { toast('Loading photo…'); return false; }
+    if (UI.sheet.photoLoading) return false;
     const name = sv('f-name').trim(), username = A.username(sv('f-username')), dob = sv('pf-dob');
-    if (!name || !A.validUsername(username) || A.age(dob, todayIso()) === null) { toast('Enter your real name, username and date of birth'); return false; }
+    if (!name || !A.validUsername(username) || A.age(dob, todayIso()) === null || !validContact(sv('pf-phone'),sv('pf-address'))) { toast('Check your name, username, birth date and contact details'); return false; }
     if (((CLUB.members || {}).list || []).some((m) => m.uid !== myUid() && m.username === username)) { toast('This username is already used in your club'); return false; }
-    Object.assign(S.settings, { name, username, birthDate: dob, bio: sv('f-bio').trim().slice(0, 300), avatar: UI.sheet.av || '' }); save('settings');
+    Object.assign(S.settings, { name, username, birthDate: dob, bio: sv('f-bio').trim().slice(0, 300), avatar: UI.sheet.av || '', phone: sv('pf-phone').trim(), address: sv('pf-address').trim(), socialAddress: sv('pf-social').trim(), onboardingComplete: true }); save('settings');
     if (CLUB.id) { const member = (CLUB.members.list || []).find((m)=>m.uid===myUid()); if (member) member.n = name; await clubUpdateMe(); } render(); return true;
   }});
   $('pf-photo').addEventListener('change', async (e) => { const f = e.target.files[0]; if (!f) return; const sheet = UI.sheet, version = sheet.photoVersion = (sheet.photoVersion || 0) + 1; sheet.photoLoading = true; try { await window.ARROW_PHOTO.crop($('pf-crop'), f, (av) => { if (UI.sheet === sheet && sheet.photoVersion === version) { sheet.photoLoading = false; sheet.av = av; avatarPreview(); } }, () => UI.sheet === sheet && sheet.photoVersion === version); } catch (_) { toast('Could not read the photo'); } finally { if (UI.sheet === sheet && sheet.photoVersion === version) sheet.photoLoading = false; } e.target.value = ''; });
@@ -2405,7 +2410,7 @@ memberSheet = function (id) {
   UI.sheetSave = async function () { const done = await oldSave(); if (done) await readCoachAges(); return done; };
 };
 const profileViewBase = VIEWS.profile;
-VIEWS.profile = function () { let h = profileViewBase(); if (!socialOn()) h = h.replace(/<div class="pf-row">[\s\S]*?<\/div>/, ''); else h = h.replace('<h2>' + esc(myName()) + '</h2>', '<h2>@' + esc(myHandle()) + '</h2>'); return h + '<button class="btn ghost wide" data-act="profile-edit">Choose a profile photo</button>'; };
+VIEWS.profile = function () { let h = profileViewBase(); if (!socialOn()) h = h.replace(/<div class="pf-row">[\s\S]*?<\/div>/, ''); else h = h.replace('<h2>' + esc(myName()) + '</h2>', '<h2>@' + esc(myHandle()) + '</h2>'); h=h.replace(/<p class="handle-name">[\s\S]*?<\/p>/,''); return h; };
 const profileSheetBase = profileSheet;
 profileSheet = function (id) { if (!socialOn()) return; const m = (CLUB.members.list || []).find((x) => x.uid === id); if (!m || m.socialAllowed !== true) return; profileSheetBase(id); const title = $('sheet-body').querySelector('.pf h2'); if (title) title.textContent = socialName(m); const foot = $('sheet-body').querySelector('.foot'); foot.insertAdjacentHTML('beforebegin', friendButton(id)); };
 const feedPostBase = feedPost;
@@ -2421,10 +2426,10 @@ const homeBase = VIEWS.home;
 VIEWS.home = function () {
   if (!socialOn()) return weekCard() + liveCard() + '<div class="card"><h3>My training</h3><p class="muted small">Your training stays private.</p></div>';
   if (UI.homeSeg === 'friends') return weekCard() + liveCard() + homeSegments() + friendsView();
-  const old = CLUB.feed; CLUB.feed = eligiblePosts(); let h = homeBase(); CLUB.feed = old;
-  return h.replace(seg([['feed', 'Feed'], ['lead', 'Leaderboard']], UI.homeSeg, 'homeseg'), homeSegments());
+  const old = CLUB.feed; const posts = eligiblePosts(); CLUB.feed = UI.homeSeg === 'friendfeed' ? posts.filter(p=>p.uid===myUid() || acceptedFriends().includes(p.uid)) : posts.filter(p=>!p.audience || p.audience==='public'); const previous = UI.homeSeg; if (previous==='friendfeed') UI.homeSeg='feed'; let h = homeBase(); UI.homeSeg=previous; CLUB.feed = old;
+  return h.replace(seg([['feed', 'Feed'], ['lead', 'Leaderboard']], previous==='friendfeed'?'feed':UI.homeSeg, 'homeseg'), homeSegments());
 };
-function homeSegments() { return seg([['feed', 'Feed'], ['lead', 'Leaderboard'], ['friends', 'Friends']], UI.homeSeg, 'homeseg'); }
+function homeSegments() { return seg([['feed', 'Public feed'], ['friendfeed', 'Friends feed'], ['friends', 'Add friends']], UI.homeSeg, 'homeseg'); }
 function friendship(id) { return (((CLUB.friends || {}).list) || []).find((r) => (r.from === myUid() && r.to === id) || (r.to === myUid() && r.from === id)); }
 function friendButton(id) { const r = friendship(id); const act = r && r.status === 'accepted' ? 'remove' : r ? (r.to === myUid() ? 'accept' : 'cancel') : 'request'; return '<button class="btn ghost" data-act="arrow-friend" data-uid="' + esc(id) + '" data-v="' + act + '">' + ({remove:'Remove friend',accept:'Accept friend',cancel:'Cancel request',request:'Add friend'})[act] + '</button>'; }
 function friendsView() { if (!CLUB.id) return '<div class="card"><p>Join a club to add friends.</p></div>'; const members = (CLUB.members.list || []).filter((m) => m.uid && m.uid !== myUid() && m.socialAllowed === true); return '<div class="card"><h3>Friends</h3><div class="list">' + (members.length ? members.map((m) => { const r = friendship(m.uid); return '<div class="row">' + avatarHtml(socialName(m), m.av, 'sm') + '<div class="txt"><b>' + esc(socialName(m)) + '</b><small>' + (r ? r.status === 'accepted' ? 'Friends' : 'Friend request' : 'Club member') + '</small></div>' + friendButton(m.uid) + '</div>'; }).join('') : '<p class="empty">No members available yet.</p>') + '</div></div>'; }
@@ -2441,7 +2446,7 @@ async function friendAction(id, action) {
 function unreadNotices() { const seen = ((S.settings.noticeSeen || {})[CLUB.id]) || []; return ((CLUB.notes || {}).list || []).filter((n) => !seen.includes(n.id)); }
 function updateNoticeBadge() { const b = $('arrow-notices'); if (!b) return; const n = unreadNotices().length; b.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4"/></svg>' + (n ? '<span class="notice-count">' + n + '</span>' : ''); b.setAttribute('aria-label', 'Club notifications' + (n ? ': ' + n : '')); }
 let noticePoll = null;
-function checkNotices() { updateNoticeBadge(); if (!noticePoll) noticePoll = setInterval(async () => { if (!CLUB.id || document.hidden) return; try { const old = new Set(((CLUB.notes || {}).list || []).map((n)=>n.id)); CLUB.notes = await cget('club/' + CLUB.id + '/notes') || { list: [] }; const fresh = CLUB.notes.list.filter((n)=>!old.has(n.id)); if ('Notification' in window && Notification.permission === 'granted') for (const n of fresh) new Notification('Arrow · ' + ((CLUB.profile || {}).n || 'Club'), { body: n.text, tag: n.id }); updateNoticeBadge(); } catch (_) {} }, 30000); }
+function checkNotices() { updateNoticeBadge(); if (!noticePoll) noticePoll = setInterval(async () => { if (!CLUB.id || document.hidden) return; try { const old = new Set(((CLUB.notes || {}).list || []).map((n)=>n.id)); CLUB.notes = await cget('club/' + CLUB.id + '/notes') || { list: [] }; if (isAdmin()) { const rows=await clist('club/'+CLUB.id+'/pay/'); for(const row of rows) CLUB.pay[row.path.split('/').pop()]=row.data; } const fresh = CLUB.notes.list.filter((n)=>!old.has(n.id)); if ('Notification' in window && Notification.permission === 'granted') for (const n of fresh) new Notification('Arrow · ' + ((CLUB.profile || {}).n || 'Club'), { body: n.text, tag: n.id }); updateNoticeBadge(); } catch (_) {} }, 30000); }
 function noticesSheet() { const notes = ((CLUB.notes || {}).list || []).slice().reverse(); openSheet('Club notifications', ('Notification' in window ? '<button class="btn ghost wide" data-act="arrow-notify-enable">Enable phone notifications</button>' : '') + '<div class="list">' + (notes.length ? notes.map((n) => '<div class="row"><div class="txt"><b>' + esc(n.text) + '</b><small>' + fmtD(n.d) + '</small></div></div>').join('') : '<p class="empty">No notices yet.</p>') + '</div>', {saveLabel:'Done',onSave(){ S.settings.noticeSeen = S.settings.noticeSeen || {}; S.settings.noticeSeen[CLUB.id] = notes.map((n) => n.id); save('settings'); updateNoticeBadge(); return true; }}); }
 const refreshBase = refresh;
 refresh = async function () { await refreshBase(); if (S.settings.clubId && !CLUB.busy) await clubLoad(); };
@@ -2457,26 +2462,88 @@ liveNames = function (list) { return liveNamesBase(list).map((x) => x.n ? x : Ob
 const liveFinishBase = liveFinish;
 liveFinish = function () { const l = liveOn(); if (!l) return; for (const k of ['subs','taps','tech']) l[k] = (l[k] || []).map((n) => n || 'Unspecified'); liveFinishBase(); };
 function scheduleGroup(x) { return x.group || (x.kind === 'kids' ? 'kids' : x.kind === 'open' ? 'all' : 'adult'); }
-function scheduleFor(date) { const d = (new Date(date + 'T12:00:00').getDay() + 6) % 7; return ((CLUB.profile || {}).schedule || []).filter((x) => +x.d === d); }
+function scheduleFor(date) { const d = (new Date(date + 'T12:00:00').getDay() + 6) % 7; return ((CLUB.profile || {}).schedule || []).filter((x) => +x.d === d && (scheduleGroup(x) === 'all' || scheduleGroup(x) === myTrack())); }
 function calendarEvents(date) { const xs = scheduleFor(date); return '<div class="cal-marks">' + (xs.some((x) => x.kind === 'open') ? '<i class="openmat" title="Open mat"></i>' : '') + (xs.some((x) => x.kind !== 'open' && scheduleGroup(x) === 'kids') ? '<i class="kids" title="Kids class"></i>' : '') + (xs.some((x) => x.kind !== 'open' && scheduleGroup(x) !== 'kids') ? '<i class="adult" title="Adult class"></i>' : '') + '</div>'; }
-function calendarLegend() { return '<p class="cal-legend"><span class="kids">Kids</span><span class="adult">Adults</span><span class="openmat">Open mat</span></p>'; }
+function calendarLegend() { return '<p class="cal-legend"><span class="'+myTrack()+'">'+(myTrack()==='kids'?'Kids':'Adults')+'</span><span class="openmat">Open mat</span></p>'; }
 const progCalendarBase = progCalendar;
 progCalendar = function (ym) { const c = progCalendarBase(ym); c.html = c.html.replace(/<b class="([^"]*)">(\d+)<\/b>/g, (_, cls, day) => '<button class="cal-date ' + cls + '" data-act="arrow-day" data-d="' + ym + '-' + pad(day) + '">' + day + calendarEvents(ym + '-' + pad(day)) + '</button>'); c.html += calendarLegend(); return c; };
 const attCalendarBase = attCalendar;
 attCalendar = function (who, ym) { const cal = attCalendarBase(who, ym); cal.html = cal.html.replace(/<b class="([^"]*)">(\d+)<\/b>/g, (_, cls, day) => '<button class="cal-date ' + cls + '" data-act="arrow-day" data-d="' + ym + '-' + pad(day) + '">' + day + calendarEvents(ym + '-' + pad(day)) + '</button>') + calendarLegend(); return cal; };
 function calendarDay(date) { const xs = scheduleFor(date).sort((a,b)=>String(a.t).localeCompare(String(b.t))); openSheet(fmtLong(date), '<div class="list">' + (xs.length ? xs.map((x) => '<div class="row"><b>' + esc(x.t) + '</b><div class="txt"><b>' + esc(x.n || KIND[x.kind]) + '</b><small>' + (x.kind === 'open' ? 'Open mat' : scheduleGroup(x) === 'kids' ? 'Kids' : scheduleGroup(x) === 'all' ? 'All ages' : 'Adults') + '</small></div></div>').join('') : '<p class="empty">No class scheduled.</p>') + '</div>', {}); }
-vClubSched = function (P, adm) { const all = (P.schedule || []).slice().sort((a,b)=>a.d-b.d || String(a.t).localeCompare(String(b.t))); let h = ''; for (const [group,title] of [['kids','Kids classes'],['adult','Adult classes'],['all','Open mats / all ages']]) { const xs = all.filter((x)=>scheduleGroup(x)===group); h += '<div class="card"><h3>' + title + '</h3><div class="list">' + (xs.length ? xs.map((x) => '<button class="row" data-act="' + (adm?'club-sess':'none') + '" data-i="' + all.indexOf(x) + '"><div class="txt"><b>' + DAYS[x.d] + ' ' + esc(x.t) + '</b><small>' + esc(x.n || KIND[x.kind]) + '</small></div>' + CHEV + '</button>').join('') : '<p class="empty">No classes yet.</p>') + '</div></div>'; } return h + (adm?'<button class="btn ghost wide" data-act="club-sess">+ Add a class or open mat</button>':'') + vOpenMats(P.id) + vCompCal(adm); };
+vClubSched = function (P, adm) { const all = (P.schedule || []).slice().sort((a,b)=>a.d-b.d || String(a.t).localeCompare(String(b.t))); let h = ''; for (const [group,title] of [['kids','Kids classes'],['adult','Adult classes'],['all','Open mats / all ages']]) { if(!adm && group!==myTrack() && group!=='all')continue; const xs = all.filter((x)=>scheduleGroup(x)===group); h += '<div class="card"><h3>' + title + '</h3><div class="list">' + (xs.length ? xs.map((x) => '<button class="row" data-act="' + (adm?'club-sess':'none') + '" data-i="' + all.indexOf(x) + '"><div class="txt"><b>' + DAYS[x.d] + ' ' + esc(x.t) + '</b><small>' + esc(x.n || KIND[x.kind]) + '</small></div>' + CHEV + '</button>').join('') : '<p class="empty">No classes yet.</p>') + '</div></div>'; } return h + (adm?'<button class="btn ghost wide" data-act="club-sess">+ Add a class or open mat</button>':'') + vOpenMats(P.id) + vCompCal(adm); };
 const classSheetBase = classSheet;
 classSheet = function (i) { if (!isAdmin()) return; const all = (CLUB.profile.schedule || []).slice().sort((a,b)=>a.d-b.d || String(a.t).localeCompare(String(b.t))); const x = i == null ? null : all[i]; classSheetBase(i); const extra = document.createElement('div'); extra.innerHTML = '<div class="field"><span class="lbl">Class group</span>' + chips('agegroup', [['kids','Kids'],['adult','Adults'],['all','All ages']], x ? scheduleGroup(x) : 'adult') + '</div>'; $('sheet-body').insertBefore(extra,$('sheet-body').querySelector('.foot')); UI.sheet.picks.agegroup = x ? scheduleGroup(x) : 'adult'; const old = UI.sheetSave; UI.sheetSave = async function () { const group = pickVal('agegroup','adult'); const result = await old(); if (result) { const rec = x || CLUB.profile.schedule[CLUB.profile.schedule.length-1]; rec.group = rec.kind === 'kids' ? 'kids' : rec.kind === 'open' ? 'all' : group; await cset('club/' + CLUB.id + '/profile',CLUB.profile); render(); } return result; }; };
 const shareSheetBase = shareSheet;
 shareSheet = function (id, fmt) { shareSheetBase(id, fmt); if (!$('sh-cv')) return; const foot = $('sheet-body').querySelector('.foot'); foot.innerHTML = '<button class="btn wide" data-act="sheet-close">Done</button>'; };
-document.addEventListener('submit', async (e) => { if (e.target.id !== 'arrow-age') return; e.preventDefault(); const dob = sv('age-dob'); if (A.age(dob,todayIso()) === null) { toast('Enter a valid date of birth'); return; } S.settings.birthDate = dob; save('settings'); if (CLUB.id) await clubUpdateMe(); render(); });
+document.addEventListener('submit', async (e) => { if (e.target.id !== 'arrow-age') return; e.preventDefault(); const dob = sv('age-dob'); if (A.age(dob,todayIso()) === null) { toast('Enter a valid date of birth'); return; } if (!validContact(sv('pf-phone'),sv('pf-address')) || !sv('on-name').trim() || !A.validUsername(sv('on-user'))) { toast('Complete your name and contact details'); return; } Object.assign(S.settings,{birthDate:dob,name:sv('on-name').trim(),username:A.username(sv('on-user')),phone:sv('pf-phone').trim(),address:sv('pf-address').trim(),socialAddress:sv('pf-social').trim(),onboardingComplete:true}); save('settings'); if (CLUB.id) { await clubUpdateMe(); await readPrivateProfiles(); } else if (S.settings.clubId) await clubLoad(); render(); });
 document.addEventListener('click', (e) => { const b=e.target.closest('[data-act]'); if (!b) return; if (b.dataset.act === 'arrow-notify-enable' && 'Notification' in window) Notification.requestPermission().then((p)=>toast(p === 'granted' ? 'Notifications enabled' : 'Allow notifications in your browser')); if (b.dataset.act === 'arrow-friend') friendAction(b.dataset.uid,b.dataset.v).catch(()=>toast('Could not save your friend request')); if (b.dataset.act === 'arrow-day') calendarDay(b.dataset.d); if (b.dataset.act === 'arrow-notices') noticesSheet(); });
+
+/* Arrow mobile refresh: membership, onboarding and audience-aware social. */
+function myTrack() { const n = myAge(); return n !== null && n < 16 ? 'kids' : 'adult'; }
+function mySchedule() { return ((CLUB.profile || {}).schedule || []).filter(x=>scheduleGroup(x)==='all'||scheduleGroup(x)===myTrack()); }
+function validContact(phone,address) { return String(phone||'').replace(/\D/g,'').length>=8 && String(address||'').trim().length>=5; }
+function contactComplete() { return validContact(S.settings.phone,S.settings.address); }
+function contactFields() { return '<section class="form-section"><h3>Contact details</h3><p class="muted small">Private to you and your coaches</p>' + field('pf-phone','Phone number',inp('pf-phone',S.settings.phone||'','tel','required autocomplete="tel" placeholder="99112233"')) + field('pf-address','Home address',ta('pf-address',S.settings.address||'','District, street, building')) + field('pf-social','Social profile (optional)',inp('pf-social',S.settings.socialAddress||'','text','placeholder="Instagram / Facebook"')) + '</section>'; }
+function onboardingForm() { return '<form id="arrow-age" class="card onboarding"><span class="eyebrow">WELCOME TO ARROW</span><h2>Your first step onto the mat</h2><p class="muted">Complete your member details so your coach can help you.</p>' + field('on-name','Real name (for your coach)',inp('on-name',S.settings.name||'','text','required autocomplete="name"')) + field('on-user','Social username',inp('on-user',myHandle()==='me'?'':myHandle(),'text','required autocapitalize="none"')) + ageFields('age') + contactFields() + '<button class="btn wide" type="submit">Complete profile</button></form>'; }
+function coachPublicKeys() { const keys={}; for (const id of (CLUB.profile||{}).admins||[]) if ((CLUB.profile.ageKeys||{})[id]) keys[id]=CLUB.profile.ageKeys[id]; return keys; }
+async function readPrivateProfiles() { CLUB.privateProfiles={}; if (!isAdmin()) return; const key=((S.settings.coachAgeKeys||{})[CLUB.id]||{}).privateKey; for (const m of CLUB.members.list||[]) { const value=await A.openPayload(m.privateProfile,myUid(),key); if(value) CLUB.privateProfiles[m.uid||m.id]=value; } }
+function acceptedFriends() { return (((CLUB.friends||{}).list)||[]).filter(r=>r.status==='accepted'&&(r.from===myUid()||r.to===myUid())).map(r=>r.from===myUid()?r.to:r.from); }
+async function decryptFeed() { const rows=[]; for(const post of feedMerged()) { if(!post.sealed){rows.push(post);continue;} const body=await A.openPayload(post.sealed,myUid(),(S.settings.socialKey||{}).privateKey); if(body) rows.push(Object.assign(body,{kudos:post.kudos||[]})); } CLUB.feed=rows; }
+feedPost = async function(rec) {
+  if(!socialOn()||!CLUB.id) return;
+  const path='club/'+CLUB.id+'/feed/'+rec.d.slice(0,7), doc=await cget(path)||{list:[]}; const old=doc.list.find(p=>p.id===rec.id); doc.list=doc.list.filter(p=>p.id!==rec.id);
+  if(rec.audience==='private') { await cset(path,doc); feedCache(rec.d.slice(0,7),doc); await decryptFeed(); return; }
+  let post=feedPostOf(rec); post.audience=rec.audience||'public'; post.kudos=old&&old.kudos||[];
+  if(post.audience==='friends') {
+    CLUB.friends=await cget('club/'+CLUB.id+'/friends')||{list:[]};
+    const keys={}; keys[myUid()]=S.settings.socialKey.publicKey;
+    const ids=new Set(acceptedFriends()); for(const m of CLUB.members.list) if(ids.has(m.uid)&&m.socialAllowed&&m.socialPublicKey) keys[m.uid]=m.socialPublicKey;
+    post={id:post.id,uid:post.uid,d:post.d,t:post.t,audience:'friends',kudos:post.kudos,sealed:await A.sealPayload(post,keys)};
+  }
+  doc.list.push(post); doc.list=doc.list.slice(-400); await cset(path,doc); feedCache(rec.d.slice(0,7),doc); await decryptFeed(); if(UI.tab==='home')render();
+};
+const ossSave=feedKudos;
+feedKudos=async function(id,d){await ossSave(id,d);await decryptFeed();render();};
+const beltView=VIEWS.belt;
+VIEWS.belt=function(){ let h=beltView(); if(!isAdmin()) h=h.replace(/<div class="actions"><button class="btn" data-act="add-promo">[\s\S]*?<\/div>/g,'<p class="muted small">Your coach manages your belt</p>').replace(/data-act="edit-promo"/g,'data-act="none"').replace(/data-act="belttrack"/g,'data-act="none"'); return h; };
+const profileSheetEdit=profileEditSheet;
+profileEditSheet=function(){profileSheetEdit();$('sheet').classList.add('modern-sheet');$('sheet-body').querySelector('h2').insertAdjacentHTML('afterend','<p class="muted small">Your identity on and off the mat.</p>');};
+const closeOld=closeSheet;
+closeSheet=function(){closeOld();$('sheet').classList.remove('modern-sheet','share-sheet','training-sheet');};
+const sessionEdit=sessSheet;
+sessSheet=function(id,prefill){sessionEdit(id,prefill);$('sheet').classList.add('modern-sheet','training-sheet');};
+const memberEdit=memberSheet;
+memberSheet=function(id){memberEdit(id);if(!UI.sheet||!isAdmin())return;const m=CLUB.members.list.find(m=>m.id===id||m.uid===id);if(!m)return;const info=(CLUB.privateProfiles||{})[m.uid||m.id];if(info&&$('m-phone'))$('m-phone').value=info.phone||'';const foot=$('sheet-body').querySelector('.foot');foot.insertAdjacentHTML('beforebegin',(info?'<section class="private-contact"><h3>Member details</h3><p>'+esc(info.phone)+'<br>'+esc(info.address||'')+(info.social?'<br>'+esc(info.social):'')+'</p></section>':'')+'<button class="btn ghost wide" data-act="coach-record-payment" data-uid="'+esc(m.uid||m.id)+'">Record payment</button>');};
+const plansLegacy=clubPlans;
+clubPlans=function(P,track){P=P||{};track=track||myTrack();const custom=(P.plans||[]).filter(p=>(p.group||'adult')===track||p.group==='all');if(custom.length)return custom.filter(p=>+p.price>0);const fee=P.fee||{};return plansLegacy({fee:{month:track==='kids'?fee.kidsMonth:fee.month,drop:track==='kids'?fee.kidsDrop:fee.drop}}).map(p=>Object.assign({},p,{id:track+'-'+p.id,group:track}));};
+function paymentUntil(x){if(x.end)return x.end;if(x.drop)return x.d;return addDays(addMonth(x.per,1)+'-01',-1);}
+membership=function(id){const items=((CLUB.pay[id]||{}).items||[]).filter(x=>x.status!=='pending'&&!x.drop);if(!items.length)return{state:'none',text:'No payment yet',days:null};const until=items.map(paymentUntil).sort().pop(),days=daysBetween(todayIso(),until);return{state:days>=0?'active':'expired',text:(days>=0?'Valid until ':'Expired on ')+until,days,until};};
+paidThisMonth=function(id){return membership(id).state==='active';};
+function paymentSummary(plan,date){return '<div class="payment-hero"><span class="eyebrow">'+(plan.group==='kids'?'KIDS MEMBERSHIP':'ADULT MEMBERSHIP')+'</span><h3>'+fmtMoney(plan.price)+'</h3><p>'+esc(tr(planName(plan)))+'</p><div class="period"><span>Starts <b>'+date+'</b></span><span>Valid until <b>'+A.periodEnd(date,plan.months||0)+'</b></span></div></div>';}
+payNowSheet=function(){const P=CLUB.profile,plans=clubPlans(P),plan=plans.find(p=>p.id===UI.payPlan)||plans[0];if(!plan)return;const d=todayIso();openSheet('Confirm your payment',paymentSummary(plan,d)+'<p class="muted small">Transfer the exact amount. Your coach will approve your payment.</p>'+payHow(P,true)+field('p-note','Transfer note (optional)',inp('p-note','','text','placeholder="Bank reference"')),{saveLabel:'I have paid',async onSave(){const path='club/'+P.id+'/pay/'+myUid(),doc=await cget(path)||{items:[]};if(doc.items.some(x=>x.status==='pending')){toast('Your previous payment is waiting for approval');return false;}const rec={id:uid(),d,per:d.slice(0,7),start:d,end:A.periodEnd(d,plan.months||0),months:plan.months||0,amt:+plan.price,note:sv('p-note').trim(),by:myUid(),status:'pending',plan:plan.id,track:myTrack(),drop:plan.kind==='drop'||!plan.months};doc.items.push(rec);await cset(path,doc);CLUB.pay[myUid()]=doc;toast('Sent to your coach');render();return true;}});$('sheet').classList.add('modern-sheet');};
+const confirmPayment=confirmPay;
+confirmPay=async function(id,payment){if(!isAdmin())return;const fresh=await cget('club/'+CLUB.id+'/pay/'+id);if(fresh)CLUB.pay[id]=fresh;await confirmPayment(id,payment);if(UI.sheet)closeSheet();updateNoticeBadge();};
+paySheet=function(id,forUid){if(!isAdmin()){const x=((CLUB.pay[myUid()]||{}).items||[]).find(x=>x.id===id);if(x)openSheet('Payment receipt','<div class="payment-hero"><h3>'+fmtMoney(x.amt)+'</h3><p>'+esc(x.status==='pending'?'Waiting for coach approval':'Approved')+'</p><p>'+esc(x.start||x.d)+' → '+esc(paymentUntil(x))+'</p></div>',{});return;}const who=forUid||myUid(),m=CLUB.members.list.find(m=>(m.uid||m.id)===who)||{},track=(CLUB.privateAges||{})[who]!=null?(CLUB.privateAges[who]<16?'kids':'adult'):m.track||myTrack();const plans=clubPlans(CLUB.profile,track),doc=CLUB.pay[who]||{items:[]},x=doc.items.find(p=>p.id===id);const plan=plans.find(p=>p.id===(x||{}).plan)||plans[0];openSheet('Record member payment','<div class="payment-member"><b>'+esc(m.n||myName())+'</b><span class="pill">'+(track==='kids'?'Kids':'Adults')+'</span></div>'+field('coach-plan','Membership plan','<select id="coach-plan">'+plans.map(p=>'<option value="'+esc(p.id)+'">'+esc(planName(p))+' · '+fmtMoney(p.price)+'</option>').join('')+'</select>')+'<div class="grid2">'+field('p-d','Paid on',inp('p-d',x?x.d:todayIso(),'date','max="'+todayIso()+'"'))+field('p-months','Months',inp('p-months',x?x.months||1:plan?plan.months:1,'number','min="0" max="24"'))+'</div>'+field('p-amt','Amount (₮)',inp('p-amt',x?x.amt:plan?plan.price:'','number','min="1" inputmode="numeric"'))+field('p-note','Transfer note (optional)',inp('p-note',x?x.note:'','text')),{saveLabel:'Record payment',async onSave(){const d=sv('p-d'),amt=+sv('p-amt'),months=Math.max(0,Math.min(24,+sv('p-months')||0));if(!d||d>todayIso()||amt<=0){toast('Check the payment details');return false;}const fresh=await cget('club/'+CLUB.id+'/pay/'+who)||{items:[]};const rec=fresh.items.find(p=>p.id===id)||{id:uid()};Object.assign(rec,{d,start:d,end:A.periodEnd(d,months),months,per:d.slice(0,7),amt,note:sv('p-note').trim(),plan:sv('coach-plan'),track,status:'ok',okBy:myUid(),okAt:todayIso(),by:myUid(),drop:months===0});if(!id)fresh.items.push(rec);await cset('club/'+CLUB.id+'/pay/'+who,fresh);CLUB.pay[who]=fresh;toast('Payment recorded');render();return true;}});$('sheet').classList.add('modern-sheet');$('coach-plan').onchange=()=>{const p=plans.find(p=>p.id===sv('coach-plan'));if(p){$('p-amt').value=p.price;$('p-months').value=p.months;}};};
+const payView=vClubPay;
+vClubPay=function(P,admin){return '<div class="track-label">'+(myTrack()==='kids'?'Kids membership':'Adult membership')+'</div>'+payView(P,admin);};
+function pendingPaymentNotices(){if(!isAdmin())return[];const out=[];for(const m of CLUB.members.list||[])for(const x of pendingPay(m.uid||m.id))out.push({id:'payment:'+x.id,d:x.d,text:(m.n||'Member')+' · '+fmtMoney(x.amt),who:m.uid||m.id,payment:x.id});return out;}
+const unreadClub=unreadNotices;
+unreadNotices=function(){return unreadClub().concat(pendingPaymentNotices());};
+noticesSheet=function(){const notes=((CLUB.notes||{}).list||[]).slice().reverse(),payments=pendingPaymentNotices();openSheet('Club notifications',('Notification' in window ? '<button class="btn ghost wide" data-act="arrow-notify-enable">Enable phone notifications</button>' : '')+'<div class="list">'+payments.map(n=>'<div class="row"><div class="txt"><b>'+esc(n.text)+'</b><small>Payment awaiting approval</small></div><button class="btn" data-act="club-confirm" data-uid="'+esc(n.who)+'" data-id="'+esc(n.payment)+'">Approve</button></div>').join('')+notes.map(n=>'<div class="row"><div class="txt"><b>'+esc(n.text)+'</b><small>'+fmtD(n.d)+'</small></div></div>').join('')+(!payments.length&&!notes.length?'<p class="empty">No notices yet.</p>':'')+'</div>',{saveLabel:'Done',onSave(){S.settings.noticeSeen=S.settings.noticeSeen||{};S.settings.noticeSeen[CLUB.id]=notes.map(n=>n.id);save('settings');updateNoticeBadge();return true;}});};
+document.addEventListener('click',e=>{const b=e.target.closest('[data-act="coach-record-payment"]');if(b&&isAdmin()){closeSheet();paySheet(null,b.dataset.uid);}});
+
+shareSheet=function(id,fmt){const s=id?S.log.items.find(x=>x.id===id):sessionsSorted()[0];if(!s){toast('Log a training first');return;}Object.assign(SHARE,{sess:s,img:null,tpl:'mat',fmt:fmt==='post'?'post':'story',frame:'mat'});const size=shareSize();const body='<div class="share-top"><div><span class="eyebrow">ARROW · JIU-JITSU</span><h2>Share your session</h2></div><button class="btn ghost compact" data-act="sheet-close">Done</button></div><div class="share-preview"><canvas id="sh-cv" width="'+size[0]+'" height="'+size[1]+'" class="sharecv"></canvas><label class="photo-overlay" for="sh-photo">+ Add photo<input id="sh-photo" type="file" accept="image/*" hidden></label></div><div class="frame-options" role="group" aria-label="Story frame">'+[['mat','The mat'],['belt','Jiu-jitsu'],['ticket','Training receipt']].map(([key,name])=>'<button class="frame-option '+(key==='mat'?'on':'')+'" data-act="arrow-frame" data-v="'+key+'" aria-pressed="'+(key==='mat')+'"><span class="frame-art '+key+'">'+(key==='mat'?'🥋':key==='belt'?'柔術':'ARROW')+'</span><span>'+name+'</span></button>').join('')+'</div><div class="share-format">'+chips('fmt',[['story','Story 9:16'],['post','Post 4:5']],SHARE.fmt)+'</div><div class="share-export"><button class="btn ghost" data-act="share-save">Save image</button><button class="btn" data-act="share-send">Share</button></div>';openSheet('',body,{state:{picks:{fmt:SHARE.fmt}}});$('sheet').classList.add('share-sheet');$('sheet-body').querySelector(':scope > h2').remove();$('sheet-body').querySelector('.foot').remove();$('sh-photo').onchange=async(e)=>{const f=e.target.files[0];if(!f)return;const sheet=UI.sheet,url=URL.createObjectURL(f),im=new Image();try{im.src=url;await im.decode();if(UI.sheet!==sheet)return;SHARE.img=im;drawShare();}catch(_){toast('Could not read the photo');}finally{URL.revokeObjectURL(url);e.target.value='';}};drawShare();};
+drawShareNow=function(){const cv=$('sh-cv');if(!cv)return;const s=SHARE.sess;window.ARROW_FRAME.draw(cv,{frame:SHARE.frame||'mat',image:SHARE.img,date:s.d,club:(CLUB.profile||{}).n||'',type:SNAME[s.type]||'Training',minutes:s.min||0,rounds:s.rolls||0,submissions:A.count(s.subs),username:myHandle(),beltColor:beltDef(S.belt.track,S.belt.belt).c,stripes:+S.belt.stripes||0});};
+document.addEventListener('click',e=>{const b=e.target.closest('[data-act="arrow-frame"]');if(!b)return;SHARE.frame=b.dataset.v;$('sheet-body').querySelectorAll('.frame-option').forEach(x=>{x.classList.toggle('on',x===b);x.setAttribute('aria-pressed',String(x===b));});drawShare();});
+
+planRows=function(){const el=$('c-plans');if(!el||!UI.sheet)return;const ps=UI.sheet.plans||[];el.innerHTML=ps.map((p,i)=>'<section class="plan-editor"><div class="grid2">'+field('c-plan-n-'+i,'Plan name',inp('c-plan-n-'+i,p.n||'','text'))+field('c-plan-g-'+i,'Age group','<select id="c-plan-g-'+i+'">'+[['adult','Adults'],['kids','Kids'],['all','All ages']].map(([k,n])=>'<option value="'+k+'"'+((p.group||'adult')===k?' selected':'')+'>'+n+'</option>').join('')+'</select>')+'</div><div class="grid2">'+field('c-plan-m-'+i,'Months',inp('c-plan-m-'+i,p.months==null?1:p.months,'number','min="0" max="24"'))+field('c-plan-p-'+i,'Price (₮)',inp('c-plan-p-'+i,p.price||'','number','min="1"'))+'</div><button class="btn ghost" data-act="plan-rm" data-i="'+i+'">Remove plan</button></section>').join('')+'<button class="btn ghost wide" data-act="plan-add">+ Add option</button>';};
+const planReadOld=planRead;
+planRead=function(){return planReadOld().map((p,i)=>Object.assign(p,{group:sv('c-plan-g-'+i)||'adult'}));};
 
 /* ---------- boot ---------- */
 try { const t = localStorage.getItem("bjj-theme"); if (t && t !== "system") document.documentElement.dataset.theme = t; } catch (e) {}
 try { const l = localStorage.getItem("bjj-lang"); I18N.lang = l === "en" ? "en" : "mn"; } catch (e) { I18N.lang = "mn"; }
 if (I18N.lang === "mn") I18N.start();
 try { const u = new URLSearchParams(location.search); const pj = parseJoinParams(u); if (pj) { localStorage.setItem("bjj-join", JSON.stringify(pj)); history.replaceState(null, "", location.pathname + location.hash); } } catch (e) {}
-if (SB.configured()) { SB.loadSession(); if (SB.session) { setSync("saving", "Loading…"); startCloud(); } else showLogin("", !!pendingJoin()); } else startLocal();
+if (SB.configured()) { SB.loadSession(); if (SB.session) { setSync("saving", ""); startCloud(); } else showLogin("", !!pendingJoin()); } else startLocal();
 })();

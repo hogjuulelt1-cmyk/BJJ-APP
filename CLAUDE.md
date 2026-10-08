@@ -137,3 +137,32 @@ Sheet save/delete handlers await asynchronous writes and keep failed validation 
 The smoke script in `tests/arrow-smoke.py` uses local fixtures with config.js intercepted.
 
 Profile photos use `profile-photo.js`: drag/keyboard positioning and zoom in the profile editor, exporting only a 50×50 JPEG. Source files and share-frame photos stay in the browser.
+
+## Arrow mobile update
+
+Personal schedules, attendance misses and fees use age <16 as kids, >=16 as adults;
+all-age/open-mat sessions remain visible. Coaches see all schedules for editing.
+Fee defaults are `fee.month/drop` (adult) and `fee.kidsMonth/kidsDrop` (kids); custom
+plans carry `group: kids|adult|all`. `periodEnd` clamps calendar-month boundaries.
+New payments store `start/end/months` and remain pending until coach approval. Members
+cannot choose payment dates or amounts. Coaches record/approve from member sheets.
+Legacy month-based payments still work. Pending payments appear in coach notices
+and are polled every 30 seconds while the app is visible (no background push).
+
+Member onboarding requires real name, username, birth date, phone and home address;
+social address is optional. Phone/address stay in private settings and encrypted
+`member.privateProfile` envelopes for registered coach keys. Console reads them only
+for coaches with the matching private key.
+
+Sessions store `audience: public|friends|private`. Public means club feed, not a global
+unauthenticated feed. Friends posts use AES-GCM payloads with RSA-wrapped keys for the
+author and accepted friends whose social public keys are registered. `settings.socialKey`
+is owner-private and `member.socialPublicKey` is public. Recipients need to complete
+onboarding/open the updated app first. Private sessions never publish to the feed.
+Underlying shared club-row RLS is unchanged: client coach controls are not backend
+authorization; do not describe them as a server-enforced permission boundary.
+
+`share-frame.js` draws three original BJJ frames with 9:16/4:5 exports. Share photos
+remain local. Routine sync/loading status UI is removed; persistence and error handling
+remain active. Tests: `arrow-smoke.py`, `arrow-v3-smoke.py` and `arrow-admin-smoke.py`
+(the admin test mocks all Supabase requests and never changes production data).

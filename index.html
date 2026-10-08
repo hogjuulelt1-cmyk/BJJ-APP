@@ -597,6 +597,9 @@ button.av{border:0;padding:0;cursor:pointer;font:inherit;font-family:var(--displ
 @keyframes slideL{from{opacity:0;transform:translateX(24px)}to{opacity:1;transform:none}}
 @keyframes slideR{from{opacity:0;transform:translateX(-24px)}to{opacity:1;transform:none}}
 
+/* Modern training, profile and sharing */
+#sync{display:none!important}.modern-sheet .in{max-width:540px}.modern-sheet h2{font-size:1.7rem;margin-bottom:10px}.modern-sheet input,.modern-sheet textarea,.modern-sheet select{background:var(--sunk);border:1px solid transparent;border-radius:14px;padding:14px 16px;min-height:50px}.modern-sheet input:focus,.modern-sheet textarea:focus{border-color:var(--accent)}.modern-sheet .field label,.modern-sheet .lbl{font-weight:600;font-size:.8rem;color:var(--muted)}.form-section{padding-top:20px;border-top:1px solid var(--line);margin:20px 0}.form-section h3{margin:0 0 8px}.eyebrow{font-size:.65rem;letter-spacing:.14em;font-weight:800;color:var(--accent)}.session-totals{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:14px 0}.session-totals span{display:flex;flex-direction:column;align-items:center;padding:14px 6px;border-radius:14px;background:var(--sunk);font-size:.7rem;color:var(--muted)}.session-totals b{font-size:1.7rem;color:var(--ink);margin-bottom:5px}.plan-editor{padding:16px;background:var(--sunk);border-radius:16px;margin:12px 0}.session-intro{padding:16px;background:var(--sunk);border-radius:18px;margin-bottom:20px}.session-intro h3{font-size:1.3rem;margin:8px 0 0}.edit-details{padding:16px;border:1px solid var(--line);border-radius:16px;margin:20px 0}.edit-details summary{font-size:.9rem;font-weight:600;cursor:pointer;padding:4px 0}.edit-details[open] summary{margin-bottom:18px}.audience-panel{padding:16px;background:var(--sunk);border-radius:16px}.modern-sheet .foot{position:sticky;bottom:0;background:var(--surface);padding:16px 0;margin-top:20px}.modern-sheet .foot .btn{flex:1}.track-label{color:var(--muted);font-weight:600;margin:12px 0}.payment-hero{padding:24px;background:var(--sunk);border-radius:20px;margin:16px 0}.payment-hero h3{font-size:2rem;margin:10px 0}.period{display:grid;grid-template-columns:1fr 1fr;gap:16px;padding-top:16px;border-top:1px solid var(--line)}.period span{font-size:.8rem;color:var(--muted)}.period b{display:block;color:var(--ink);margin-top:5px}.payment-member{display:flex;justify-content:space-between;padding:16px;background:var(--sunk);border-radius:14px;margin:12px 0}.private-contact{background:var(--sunk);padding:16px;border-radius:14px;margin:16px 0}.private-contact p{overflow-wrap:anywhere}
+.share-sheet .handle{display:none}.share-sheet .in{max-width:540px;padding-top:20px}.share-top{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:18px}.share-top h2{font-size:1.35rem;margin:5px 0 0}.compact{padding:8px 14px;min-width:60px}.share-preview{position:relative;background:#0f141d;border-radius:20px;padding:14px;display:flex;justify-content:center;overflow:hidden}.share-preview .sharecv{width:auto;height:auto;max-width:100%;max-height:42vh;border-radius:12px;display:block;object-fit:contain}.photo-overlay{position:absolute;left:24px;bottom:24px;background:rgba(0,0,0,.55);color:#fff;border:1px solid rgba(255,255,255,.3);border-radius:99px;font-size:.8rem;font-weight:600;padding:10px 14px;cursor:pointer}.frame-options{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin:18px 0}.frame-option{min-width:0;display:flex;flex-direction:column;gap:8px;align-items:center;padding:8px;background:var(--sunk);border:2px solid transparent;border-radius:14px;color:var(--ink);font:inherit;font-size:.7rem;cursor:pointer}.frame-option.on{border-color:var(--accent)}.frame-art{height:68px;width:100%;display:grid;place-items:center;background:#172133;color:#fc5200;border-radius:8px;font-size:1.6rem;font-weight:800}.frame-art.ticket{background:#ede7dc;color:#171b24;font-size:.8rem}.share-format{display:flex;justify-content:center;margin-bottom:18px}.share-export{display:grid;grid-template-columns:1fr 1fr;gap:12px;position:sticky;bottom:0;background:var(--surface);padding:14px 0 calc(14px + env(safe-area-inset-bottom));z-index:2}.share-export .btn{min-height:50px}.onboarding h2{font-size:1.7rem;margin:12px 0}
 /* Arrow mobile refinements */
 .profile-crop:empty{display:none}.profile-crop{margin:16px 0;padding:14px;background:var(--sunk);border-radius:14px}.avatar-crop{display:block;width:180px;height:180px;max-width:100%;margin:10px auto;border-radius:8px;touch-action:none;cursor:grab;outline-offset:3px}.avatar-crop:active{cursor:grabbing}.crop-zoom{display:flex;align-items:center;gap:12px}.crop-zoom input{flex:1;min-width:0;min-height:44px;accent-color:var(--accent)}
 [hidden]{display:none!important}
@@ -619,7 +622,7 @@ button.av{border:0;padding:0;cursor:pointer;font:inherit;font-family:var(--displ
       <div class="who">
         <h1 id="title">Arrow</h1><button class="icon-btn notice-bell" id="arrow-notices" data-act="arrow-notices" aria-label="Club notifications"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4"/></svg></button>
         <div class="belt" id="belt" role="img" aria-label="Belt"></div>
-        <div class="sync" id="sync"><span class="dot"></span><span id="sync-t">Loading…</span></div>
+
       </div>
       <button class="hdr-menu" data-act="menu" aria-label="Menu"><svg viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button>
     </div>
@@ -632,11 +635,12 @@ button.av{border:0;padding:0;cursor:pointer;font:inherit;font-family:var(--displ
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 <script src="config.js"></script>
 <script src="qr.js?v=1"></script>
-<script src="lang-mn.js?v=11"></script>
+<script src="lang-mn.js?v=12"></script>
 <script src="meta.js?v=3"></script>
 <script src="seed.js?v=8"></script>
-<script src="arrow-core.js?v=1"></script>
+<script src="arrow-core.js?v=2"></script>
 <script src="profile-photo.js?v=1"></script>
-<script src="app.js?v=29"></script>
+<script src="share-frame.js?v=1"></script>
+<script src="app.js?v=30"></script>
 </body>
 </html>

@@ -28,6 +28,35 @@
       return age(dob);
     } catch (_) { return null; }
   }
+  async function sealPayload(value, publicKeys) {
+    const raw = crypto.getRandomValues(new Uint8Array(32)), iv = crypto.getRandomValues(new Uint8Array(12));
+    const key = await crypto.subtle.importKey("raw", raw, "AES-GCM", false, ["encrypt"]);
+    const cipher = b64(await crypto.subtle.encrypt({name:"AES-GCM",iv}, key, new TextEncoder().encode(JSON.stringify(value))));
+    const keys = {};
+    for (const [id,jwk] of Object.entries(publicKeys)) {
+      const publicKey = await crypto.subtle.importKey("jwk", jwk, {name:"RSA-OAEP",hash:"SHA-256"}, false, ["encrypt"]);
+      keys[id] = b64(await crypto.subtle.encrypt({name:"RSA-OAEP"}, publicKey, raw));
+    }
+    return {cipher,iv:b64(iv),keys};
+  }
+  async function openPayload(payload, id, privateKey) {
+    if (!payload || !payload.keys || !payload.keys[id] || !privateKey) return null;
+    try {
+      const rsa = await crypto.subtle.importKey("jwk",privateKey,{name:"RSA-OAEP",hash:"SHA-256"},false,["decrypt"]);
+      const raw = await crypto.subtle.decrypt({name:"RSA-OAEP"},rsa,bytes(payload.keys[id]));
+      const aes = await crypto.subtle.importKey("raw",raw,"AES-GCM",false,["decrypt"]);
+      const data = await crypto.subtle.decrypt({name:"AES-GCM",iv:bytes(payload.iv)},aes,bytes(payload.cipher));
+      return JSON.parse(new TextDecoder().decode(data));
+    } catch (_) { return null; }
+  }
+  function periodEnd(start, months) {
+    if (!months) return start;
+    const source=new Date(start+'T12:00:00'), day=source.getDate();
+    const end=new Date(source.getFullYear(),source.getMonth()+months,1,12);
+    end.setDate(Math.min(day,new Date(end.getFullYear(),end.getMonth()+1,0).getDate()));
+    end.setDate(end.getDate()-1);
+    return end.getFullYear()+'-'+String(end.getMonth()+1).padStart(2,'0')+'-'+String(end.getDate()).padStart(2,'0');
+  }
   const count = (items) => (items || []).reduce((n, x) => n + (Number(x && x.c) || 1), 0);
-  window.ARROW = { age, username, validUsername, newAgeKey, sealAge, openAge, count };
+  window.ARROW = { age, username, validUsername, newAgeKey, sealAge, openAge, sealPayload, openPayload, periodEnd, count };
 })();
