@@ -40,7 +40,7 @@ module.exports=async function admin(req,res){
   if(action==='capabilities')return res.status(200).json({accountsReady:!!secret,auditScope:secret?'all':'own',admin:true});
   if(action==='users'&&req.method==='GET'){
    requireSecret();const page=Number(q.get('page')||1);if(!Number.isInteger(page)||page<1||page>10000)throw fail(400,'Invalid page');
-   const data=await request('/auth/v1/admin/users?page='+page+'&per_page=50');const users=(data.users||[]).map(u=>({id:u.id,email:u.email||'',name:u.user_metadata?.name||'',username:u.user_metadata?.username||'',createdAt:u.created_at,lastSignIn:u.last_sign_in_at,confirmed:!!u.email_confirmed_at}));
+   const data=await request('/auth/v1/admin/users?page='+page+'&per_page=50');const batch=(data.users||[]).slice(0,50),ids=batch.map(u=>u.id).filter(safeId);const settings=ids.length?await request('/rest/v1/docs?'+new URLSearchParams({select:'path,data',path:'in.('+ids.map(id=>'bjj/u/'+id+'/settings').join(',')+')'})):[];const profiles=new Map(settings.map(r=>[r.path.split('/')[2],r.data]));const users=batch.map(u=>({id:u.id,email:u.email||'',name:profiles.get(u.id)?.name||u.user_metadata?.name||'',username:profiles.get(u.id)?.username||u.user_metadata?.username||'',createdAt:u.created_at,lastSignIn:u.last_sign_in_at,confirmed:!!u.email_confirmed_at}));
    return res.status(200).json({users,page,hasMore:users.length===50,total:data.total??null});
   }
   if(action==='user'&&req.method==='GET'){
