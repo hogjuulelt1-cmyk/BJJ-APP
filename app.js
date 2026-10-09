@@ -2769,7 +2769,35 @@ const removeCommunityFeed=feedRemove;
 feedRemove=async function(id,d){if(!CLUB.id||!d)return;await communityRequest('remove',{id,d,keepPartners:true});FEED.raw.delete(id);await decryptFeed();COMMUNITY.lead.clear();if(UI.tab==='home')render();};
 const sharePartnerRounds=rollsShare;
 rollsShare=async function(rec){await communityRequest('partner-save',{session:rec});await sharePartnerRounds(rec);COMMUNITY.partnerLoaded=false;};
-async function deleteTraining(id,d){if(CLUB.id){await communityRequest('remove',{id,d});const ym=d.slice(0,7),rolls=await cget('club/'+CLUB.id+'/rolls/'+ym);if(rolls){rolls.list=(rolls.list||[]).filter(r=>!(r.sid===id&&r.a===myUid()));await cset('club/'+CLUB.id+'/rolls/'+ym,rolls);if(ym===thisMonth())CLUB.rolls=rolls;}}S.log.items=S.log.items.filter(s=>s.id!==id);save('log');await flush('log');FEED.raw.delete(id);await decryptFeed();COMMUNITY.lead.clear();await publishProfile();render();toast('Training deleted');return true;}
+async function deleteTraining(id,d){
+ let cleanupPending=false;
+ if(CLUB.id){
+  const result=await communityRequest('remove',{id,d});
+  cleanupPending=!!result.partnersPending;
+  const ym=d.slice(0,7);
+  try{
+   const rolls=await cget('club/'+CLUB.id+'/rolls/'+ym);
+   if(rolls){
+    rolls.list=(rolls.list||[]).filter(r=>!(r.sid===id&&r.a===myUid()));
+    await cset('club/'+CLUB.id+'/rolls/'+ym,rolls);
+    if(ym===thisMonth())CLUB.rolls=rolls;
+   }
+  }catch(e){cleanupPending=true;console.warn('[training-delete] roll cleanup failed');}
+ }
+ S.log.items=S.log.items.filter(s=>s.id!==id);
+ save('log');
+ await flush('log');
+ FEED.raw.delete(id);
+ if(CLUB.feedDocs?.[d.slice(0,7)])CLUB.feedDocs[d.slice(0,7)].list=(CLUB.feedDocs[d.slice(0,7)].list||[]).filter(p=>p.id!==id);
+ await decryptFeed();
+ COMMUNITY.lead.clear();
+ COMMUNITY.profiles.delete(myUid());
+ try{await publishProfile();}
+ catch(e){cleanupPending=true;console.warn('[training-delete] profile refresh failed');}
+ render();
+ toast(cleanupPending?'Training deleted. Some linked details may need a refresh.':'Training deleted');
+ return true;
+}
 const communityCard=feedCard;
 feedCard=function(p){let h=communityCard(p);h=h.replace('<div class="pinfo"><b>','<div class="pinfo"><button type="button" class="post-author" data-act="member-profile" data-uid="'+esc(p.uid)+'">').replace('</b><p class="muted small">','</button><p class="muted small">');if(p.uid===myUid())h=h.replace('</article>','<div class="post-owner-actions">'+(S.log.items.some(s=>s.id===p.id)?'<button type="button" class="text-button" data-act="edit-sess" data-id="'+esc(p.id)+'">Edit training</button>':'')+'<button type="button" class="text-button danger" data-act="delete-training" data-id="'+esc(p.id)+'" data-d="'+esc(p.d)+'">Delete training</button></div></article>');return h;};
 function friendMembers(id=myUid()){const ids=new Set((CLUB.friends?.list||[]).filter(r=>r.status==='accepted'&&(r.from===id||r.to===id)).map(r=>r.from===id?r.to:r.from));return (CLUB.members?.list||[]).filter(m=>ids.has(m.uid)&&m.socialAllowed===true).map(m=>({uid:m.uid,username:m.username||'member',av:m.av||''}));}

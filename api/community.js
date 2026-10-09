@@ -11,7 +11,7 @@ module.exports=async function(req,res){
  if(!safeId(club)||!['profile','profile-feed','publish','leaderboard','partners','partner-save','remove'].includes(action))return res.status(400).json({error:'Invalid request'});
  if(req.method!==( ['publish','partner-save','remove'].includes(action)?'POST':'GET'))return res.status(405).json({error:'Method not allowed'});
  const headers={apikey:config.supabaseAnonKey,Authorization:auth};
- async function request(path,opt){const r=await fetch(config.supabaseUrl+path,{...opt,headers:{...headers,...opt?.headers},signal:AbortSignal.timeout(15000)});if(!r.ok){const e=new Error('Upstream failed');e.status=[401,403,409].includes(r.status)?r.status:502;throw e;}return r.status===204?[]:r.json();}
+ async function request(path,opt){const r=await fetch(config.supabaseUrl+path,{...opt,headers:{...headers,...opt?.headers},signal:AbortSignal.timeout(15000)});if(!r.ok){const e=new Error('Upstream failed');e.status=[401,403,409].includes(r.status)?r.status:502;throw e;}if(r.status===204)return [];const payload=await r.text();return payload?JSON.parse(payload):[];}
  const rows=path=>request('/rest/v1/docs?'+new URLSearchParams({select:'data,updated_at',path:'eq.'+path}));
  const doc=async path=>(await rows(path))[0]?.data;
  const list=(prefix,extra={})=>request('/rest/v1/docs?'+new URLSearchParams({select:'path,data',path:'like.'+prefix+'*',...extra}));
@@ -67,9 +67,25 @@ module.exports=async function(req,res){
    const records=await list(base+'partner-sessions/',extra),last=records[29];return res.status(200).json({items:records.slice(0,30).map(r=>r.data).filter(s=>s.owner!==user.id&&(s.participants||[]).includes(user.id)),next:records.length>30?JSON.stringify({d:last.data.d,key:last.path.slice((base+'partner-sessions/').length)}):null});
   }
   if(action==='remove'){
-   const id=body.id,d=body.d;if(!safeId(id)||!/^\d{4}-\d{2}-\d{2}$/.test(d||''))return res.status(400).json({error:'Invalid session'});
-   const path=base+'feed/'+d.slice(0,7);await change(path,data=>{const p=(data.list||[]).find(p=>p.id===id);if(p&&p.uid!==user.id){const e=new Error('Not owner');e.status=403;throw e;}return {...data,list:(data.list||[]).filter(p=>p.id!==id||p.uid!==user.id)};});
-   if(!body.keepPartners)await set(base+'partner-sessions/'+user.id+'_'+id,{id,owner:user.id,participants:[],d,min:0,type:'gi'});return res.status(200).json({ok:true});
+   const id=body.id,d=body.d;
+   if(!safeId(id)||!/^\d{4}-\d{2}-\d{2}$/.test(d||''))return res.status(400).json({error:'Invalid session'});
+   const path=base+'feed/'+d.slice(0,7);
+   let removed=false;
+   await change(path,data=>{
+    const posts=Array.isArray(data.list)?data.list:[];
+    const post=posts.find(p=>p.id===id);
+    if(post&&post.uid!==user.id){const e=new Error('Not owner');e.status=403;throw e;}
+    if(post)removed=true;
+    return {...data,list:posts.filter(p=>p.id!==id||p.uid!==user.id)};
+   });
+   // Deleting the feed post and clearing partner history are separate writes.
+   // A failed partner projection must not disguise a successful feed deletion.
+   let partnersPending=false;
+   if(!body.keepPartners){
+    try{await set(base+'partner-sessions/'+user.id+'_'+id,{id,owner:user.id,participants:[],d,min:0,type:'gi'});}
+    catch(e){partnersPending=true;console.warn('[community/remove] partner cleanup failed, status:',e.status||502);}
+   }
+   return res.status(200).json({ok:true,removed,partnersPending});
   }
  }catch(e){return res.status(e.status||502).json({error:e.status===403?'Not permitted':e.status===409?'Please try again':'Could not complete request'});}
 };
