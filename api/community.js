@@ -11,7 +11,7 @@ module.exports=async function(req,res){
  if(!safeId(club)||!['profile','profile-feed','publish','leaderboard','partners','partner-save','remove'].includes(action))return res.status(400).json({error:'Invalid request'});
  if(req.method!==( ['publish','partner-save','remove'].includes(action)?'POST':'GET'))return res.status(405).json({error:'Method not allowed'});
  const headers={apikey:config.supabaseAnonKey,Authorization:auth};
- async function request(path,opt){const r=await fetch(config.supabaseUrl+path,{...opt,headers:{...headers,...opt?.headers},signal:AbortSignal.timeout(15000)});if(!r.ok){const e=new Error('Upstream failed');e.status=[401,403,409].includes(r.status)?r.status:502;throw e;}return r.status===204?[]:r.json();}
+ async function request(path,opt){const r=await fetch(config.supabaseUrl+path,{...opt,headers:{...headers,...opt?.headers},signal:AbortSignal.timeout(15000)});if(!r.ok){const e=new Error('Upstream failed');e.status=[401,403,409].includes(r.status)?r.status:502;throw e;}if(r.status===204)return [];const payload=await r.text();return payload?JSON.parse(payload):[];}
  const rows=path=>request('/rest/v1/docs?'+new URLSearchParams({select:'data,updated_at',path:'eq.'+path}));
  const doc=async path=>(await rows(path))[0]?.data;
  const list=(prefix,extra={})=>request('/rest/v1/docs?'+new URLSearchParams({select:'path,data',path:'like.'+prefix+'*',...extra}));
