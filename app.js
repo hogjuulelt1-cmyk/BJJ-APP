@@ -2289,10 +2289,10 @@ document.addEventListener("click", async (e) => {
     case "club-admin": if (isAdmin()) { const P = CLUB.profile; P.admins = P.admins || []; const i = P.admins.indexOf(ds.uid); if (i >= 0) P.admins.splice(i, 1); else P.admins.push(ds.uid); cset("club/" + P.id + "/profile", P).then(render); } break;
     case "club-leave": if (UI.confirm === "leave") { UI.confirm = null; clubLeave(); } else { UI.confirm = "leave"; render(); setTimeout(() => { if (UI.confirm === "leave") { UI.confirm = null; render(); } }, 3000); } break;
     case "techview": UI.tech.view = ds.v; UI.rollId = null; render(); break;
-    case "segview": UI.seg[UI.tab] = ds.v; render(); break;
+    case "segview": UI.seg[UI.tab] = ds.v; render(); arrowSubmenuStart("segview"); break;
     case "cal-nav": UI.calYm = ymShift(UI.calYm || todayIso().slice(0, 7), +ds.v); render(); break;
     case "anarange": UI.anaRange = ds.v; render(); break;
-    case "clubseg": UI.clubSeg = ds.v; render(); break;
+    case "clubseg": UI.clubSeg = ds.v; render(); arrowSubmenuStart("clubseg"); break;
     case "roll-start": rollStart(ds.pos); break;
     case "roll-by": if (UI.roll) { UI.roll.by = ds.v; UI.roll.grp = null; render(); } break;
     case "add-setup": setupEdit(null, ds.pos || null); break;
