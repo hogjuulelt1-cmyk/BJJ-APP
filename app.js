@@ -3174,7 +3174,7 @@ document.addEventListener('touchmove',e=>{if(!on)return;const d=e.touches[0].cli
  }
  window.addEventListener('scroll',()=>{
   const max=Math.max(0,document.documentElement.scrollHeight-innerHeight),now=window.scrollY||0;
-  if(!on&&!bouncing){
+  if(!bouncing){
    if(now<=1&&previous>now+1)bounce('top');
    else if(max>0&&now>=max-1&&previous<now-1)bounce('bottom');
   }
