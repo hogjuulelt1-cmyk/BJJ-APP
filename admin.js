@@ -320,4 +320,13 @@ async function boot() {
 if (!SB.url || !SB.key) { $("root").innerHTML = '<div id="login" class="card"><h1>Not configured</h1><p class="small">config.js has no Supabase project. The console only works with the cloud setup.</p></div>'; }
 else { SB.load(); boot(); }
 setInterval(async()=>{if(document.hidden||document.querySelector(".modal")||!SB.session)return;try{await loadAll();render();}catch(_){}},30000);
+
+/* PATCH: prevent console form reset while editing */
+(function(){
+ document.addEventListener('input',e=>{const f=e.target.closest('form');if(f)f.dataset.dirty='1';},true);
+ document.addEventListener('change',e=>{const f=e.target.closest('form');if(f)f.dataset.dirty='1';},true);
+ function editing(){const el=document.activeElement;return !!(el&&(el.matches('input,textarea,select,[contenteditable="true"]')||document.querySelector('form[data-dirty="1"]')));}
+ const oldRender=render; render=function(){oldRender();document.querySelectorAll('form[data-dirty="1"]').forEach(f=>{if(!f.querySelector(':focus'))f.dataset.dirty='';});};
+ const oldLoad=loadAll; loadAll=async function(){if(editing())return false;return oldLoad();};
+})();
 })();
