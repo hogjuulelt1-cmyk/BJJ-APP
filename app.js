@@ -2289,7 +2289,7 @@ document.addEventListener("click", async (e) => {
     case "club-admin": if (isAdmin()) { const P = CLUB.profile; P.admins = P.admins || []; const i = P.admins.indexOf(ds.uid); if (i >= 0) P.admins.splice(i, 1); else P.admins.push(ds.uid); cset("club/" + P.id + "/profile", P).then(render); } break;
     case "club-leave": if (UI.confirm === "leave") { UI.confirm = null; clubLeave(); } else { UI.confirm = "leave"; render(); setTimeout(() => { if (UI.confirm === "leave") { UI.confirm = null; render(); } }, 3000); } break;
     case "techview": UI.tech.view = ds.v; UI.rollId = null; render(); break;
-    case "segview": UI.seg[UI.tab] = ds.v; render(); setTimeout(()=>{window.scrollTo({top:0,behavior:"instant"});$("main")?.scrollTo({top:0,behavior:"instant"});},40); break;
+    case "segview": { const pageY=window.scrollY||0,mainY=$("main")?.scrollTop||0; UI.seg[UI.tab] = ds.v; render(); requestAnimationFrame(()=>{window.scrollTo({top:pageY,behavior:"instant"});$("main")?.scrollTo({top:mainY,behavior:"instant"});}); break; }
     case "cal-nav": UI.calYm = ymShift(UI.calYm || todayIso().slice(0, 7), +ds.v); render(); break;
     case "anarange": UI.anaRange = ds.v; render(); break;
     case "clubseg": UI.clubSeg = ds.v; render(); break;
