@@ -2070,7 +2070,7 @@ function vClubPay(P, adm) {
   let h = '';
   if (isClubCoach(me)) h = coachMembershipCard();
   else {
-  h = '<div class="card"><div class="card-head"><h3>My membership</h3><span class="pill ' + (pend ? "payment-pending" : arrowPaymentTone(ms)) + '">' + (ms.state === "active" ? ms.text : pend ? "Waiting for the coach" : ms.state === "expired" ? ms.text : "Not paid yet") + "</span></div>";
+  h = '<div class="card"><div class="card-head"><h3>My membership</h3><span class="pill ' + (pendingAny ? "payment-pending" : arrowPaymentTone(ms)) + '">' + (pendingAny ? "Waiting for the coach" : ms.state === "active" ? ms.text : ms.state === "expired" ? ms.text : "Not paid yet") + "</span></div>";
   if (plans.length) h += '<div class="plans">' + plans.map((p) => '<button type="button" class="planc' + (sel && sel.id === p.id ? " on" : "") + '" data-act="pay-plan" data-v="' + esc(p.id) + '" aria-pressed="' + (sel && sel.id === p.id) + '"><b>' + esc(planName(p)) + "</b>" + (() => { const ml = p.kind === "drop" || !p.months ? "1 class" : p.months === 1 ? "1 month" : p.months + " months"; return p.n ? "<small>" + ml + "</small>" : p.months > 1 ? "" : "<small>" + ml + "</small>"; })() + '<span class="price">' + fmtMoney(p.price) + "</span>" + (p.months > 1 ? "<small>per month ≈ " + fmtMoney(Math.round(p.price / p.months)) + "</small>" : "") + "</button>").join("") + "</div>";
   else h += '<p class="muted small">The coach has not set the fee yet.</p>';
   if (!mine.length) h += '<p class="empty">No payments yet. Pay the monthly fee here and your coach confirms it.</p>';
