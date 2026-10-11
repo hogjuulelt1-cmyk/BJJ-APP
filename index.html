@@ -649,6 +649,11 @@ body::after{content:"";position:fixed;left:0;right:0;bottom:0;height:170px;z-ind
 :root[data-theme="dark"] body::after{background:linear-gradient(to top,rgba(15,18,23,.86),rgba(15,18,23,0))}
 :root[data-theme="light"] body::after{background:linear-gradient(to top,rgba(244,244,246,.9),rgba(244,244,246,0))}
 
+/* ARROW BJJ home start training emphasis */
+.live-start{width:min(100%,560px);min-height:60px;padding:14px 24px;font-size:1.12rem;letter-spacing:.01em;box-shadow:0 8px 22px rgba(252,82,0,.22);animation:arrowStartPulse 2.8s ease-in-out infinite}
+.live-start svg{width:24px;height:24px;stroke:currentColor;fill:currentColor;flex:none}
+@keyframes arrowStartPulse{0%,100%{transform:scale(1);box-shadow:0 8px 22px rgba(252,82,0,.2)}50%{transform:scale(1.018);box-shadow:0 10px 28px rgba(252,82,0,.3)}}
+@media (prefers-reduced-motion:reduce){.live-start{animation:none}}
 </style>
 <link rel="stylesheet" href="ui-feedback.css?v=1">
 <link rel="stylesheet" href="mobile-refresh.css?v=13">
