@@ -2538,7 +2538,29 @@ const classSheetBase = classSheet;
 classSheet = function (i) { if (!isAdmin()) return; const all = (CLUB.profile.schedule || []).slice().sort((a,b)=>a.d-b.d || String(a.t).localeCompare(String(b.t))); const x = i == null ? null : all[i]; classSheetBase(i); const extra = document.createElement('div'); extra.innerHTML = '<div class="field"><span class="lbl">Class group</span>' + chips('agegroup', [['kids','Kids'],['adult','Adults'],['all','All ages']], x ? scheduleGroup(x) : 'adult') + '</div>'; $('sheet-body').insertBefore(extra,$('sheet-body').querySelector('.foot')); UI.sheet.picks.agegroup = x ? scheduleGroup(x) : 'adult'; const old = UI.sheetSave; UI.sheetSave = async function () { const group = pickVal('agegroup','adult'); const result = await old(); if (result) { const rec = x || CLUB.profile.schedule[CLUB.profile.schedule.length-1]; rec.group = rec.kind === 'kids' ? 'kids' : rec.kind === 'open' ? 'all' : group; await cset('club/' + CLUB.id + '/profile',CLUB.profile); render(); } return result; }; };
 const shareSheetBase = shareSheet;
 shareSheet = function (id, fmt) { shareSheetBase(id, fmt); if (!$('sh-cv')) return; const foot = $('sheet-body').querySelector('.foot'); foot.innerHTML = '<button class="btn wide" data-act="sheet-close">Done</button>'; };
-document.addEventListener('submit', async (e) => { if (e.target.id !== 'arrow-age') return; e.preventDefault(); const dob = sv('age-dob'); if (A.age(dob,todayIso()) === null) { toast('Enter a valid date of birth'); return; } if (!validContact(sv('pf-phone'),sv('pf-address')) || !(sv('on-name').trim()||S.settings.name) || !A.validUsername(sv('on-user')||S.settings.username)) { toast('Complete your name and contact details'); return; } Object.assign(S.settings,{birthDate:dob,name:sv('on-name').trim()||S.settings.name,username:A.username(sv('on-user')||S.settings.username),phone:sv('pf-phone').trim(),address:sv('pf-address').trim(),socialAddress:sv('pf-social').trim(),onboardingComplete:true}); const button=e.target.querySelector('button[type="submit"]'); if(button?.disabled)return;buttonBusy(button,true,'Хадгалж байна…');try{save('settings');await flush('settings'); if (CLUB.id) { await clubUpdateMe(); await readPrivateProfiles(); } else if (S.settings.clubId) await clubLoad(); await window.ARROW_UI.wait(button);render();}catch(err){toast('Could not save: '+err.message);}finally{buttonBusy(button,false);} });
+document.addEventListener('submit', async (e) => {
+  if (e.target.id !== 'arrow-age') return;
+  e.preventDefault();
+  const dob = sv('age-dob'), name = sv('on-name').trim() || S.settings.name, username = A.username(sv('on-user') || S.settings.username);
+  if (!dob || A.age(dob,todayIso()) === null) { toast('Төрсөн он, сар, өдрөө бүрэн сонгоно уу.'); return; }
+  if (!name) { $('on-name')?.focus(); toast('Нэрээ оруулна уу.'); return; }
+  if (!A.validUsername(username)) { $('on-user')?.focus(); toast('Username 3–30 латин үсэг, тоо эсвэл . _ - байна.'); return; }
+  const phone = sv('pf-phone').trim(), address = sv('pf-address').trim();
+  if (!validContact(phone,address)) { $('pf-phone')?.focus(); toast('Утас 8+ оронтой, хаяг 5+ тэмдэгт байх ёстой.'); return; }
+  const button=e.target.querySelector('button[type="submit"]'); if(button?.disabled)return; buttonBusy(button,true,'Хадгалж байна…');
+  Object.assign(S.settings,{birthDate:dob,name,username,phone,address,socialAddress:sv('pf-social').trim(),onboardingComplete:true});
+  try {
+    save('settings'); await flush('settings');
+    try {
+      if (CLUB.id) { await clubUpdateMe(); await readPrivateProfiles(); }
+      else if (S.settings.clubId) await clubLoad();
+    } catch (syncErr) { console.warn('[profile-sync]',syncErr); }
+    await window.ARROW_UI.wait(button); render(); toast('Бүртгэл амжилттай хадгалагдлаа.');
+  } catch(err) {
+    toast('Хадгалах үед алдаа гарлаа. Дахин оролдоно уу.');
+    console.error('[profile-save]',err);
+  } finally { buttonBusy(button,false); }
+});
 document.addEventListener('click', (e) => { const b=e.target.closest('[data-act]'); if (!b) return; if (b.dataset.act === 'arrow-notify-enable' && 'Notification' in window) Notification.requestPermission().then((p)=>toast(p === 'granted' ? 'Notifications enabled' : 'Allow notifications in your browser')); if (b.dataset.act === 'arrow-friend') friendAction(b.dataset.uid,b.dataset.v).catch(()=>toast('Could not save your friend request')); if (b.dataset.act === 'arrow-day') calendarDay(b.dataset.d); if (b.dataset.act === 'arrow-notices') noticesSheet(); });
 
 /* Arrow mobile refresh: membership, onboarding and audience-aware social. */
