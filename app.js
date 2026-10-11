@@ -397,7 +397,19 @@ function render(anim) {
   renderTimer(); initGraphs(); const hw = $("hist"); if (hw && hw.parentElement) hw.parentElement.scrollLeft = hw.scrollWidth;
 }
 function pageOwner(){return UI.tab+(['memberProfile'].includes(UI.tab)?':'+UI.profileUid:UI.tab==='clubProfile'?':'+UI.publicClubId:'');}
-function go(anim) { const preserve=pageOwner()===document.body.dataset.pageOwner, y=window.scrollY;render(anim);window.scrollTo({top:preserve?y:0,behavior:"instant"}); }
+function go(anim) { const preserve=pageOwner()===document.body.dataset.pageOwner, y=window.scrollY, m=$("main")?.scrollTop||0; render(anim); if(preserve){window.scrollTo({top:y,behavior:"instant"}); const main=$("main"); if(main) main.scrollTop=m;} else window.scrollTo({top:0,behavior:"instant"}); }
+function renderAtScroll(mutator){
+  const y=window.scrollY||0, x=window.scrollX||0, m=$("main")?.scrollTop||0;
+  if(typeof mutator==="function") mutator();
+  render();
+  const restore=()=>{
+    window.scrollTo({left:x,top:y,behavior:"instant"});
+    const main=$("main"); if(main) main.scrollTop=m;
+  };
+  restore();
+  requestAnimationFrame(()=>{ restore(); requestAnimationFrame(restore); });
+  setTimeout(restore,90);
+}
 let toastT;
 function toast(msg) { const t = $("toast"); t.textContent = msg; t.classList.add("show"); clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove("show"), 2200); }
 function armConfirm(key) { if (UI.confirm === key) { UI.confirm = null; return true; } UI.confirm = key; render(); setTimeout(() => { if (UI.confirm === key) { UI.confirm = null; render(); } }, 3500); return false; }
@@ -2211,7 +2223,7 @@ document.addEventListener("click", async (e) => {
   if (act === "pk-dec") { pkChange(ds.pk, +ds.i, -1); return; }
   if (act === "pk-rm") { pkChange(ds.pk, +ds.i, 0); return; }
   switch (act) {
-    case "tab": { const from=UI.tab; ARROW_PAGE_POS[from]=window.scrollY||0; const order=TABS.map(t=>t[0]),anim=order.indexOf(ds.v)>order.indexOf(from)?"enter-l":"enter-r"; if(ds.v==="me") UI.seg.me="log"; UI.tab=ds.v; try{localStorage.setItem("bjj-tab",ds.v);}catch(x){} go(anim); if(ds.v==="me"||ds.v==="club"){ arrowSubmenuStart(ds.v==="me"?"segview":"clubseg",ARROW_PAGE_POS[ds.v]||0); }else{requestAnimationFrame(()=>window.scrollTo({top:0,behavior:"instant"}));} break; }
+    case "tab": { const from=UI.tab; const order=TABS.map(t=>t[0]),anim=order.indexOf(ds.v)>order.indexOf(from)?"enter-l":"enter-r"; if(ds.v==="me") UI.seg.me="log"; UI.tab=ds.v; try{localStorage.setItem("bjj-tab",ds.v);}catch(x){} go(anim); break; }
     case "settings": settingsSheet(); break;
     case "avatar-rm": if (UI.sheet) { UI.sheet.photoVersion = (UI.sheet.photoVersion || 0) + 1; UI.sheet.photoLoading = false; UI.sheet.av = ""; const crop = $("pf-crop"); if (crop) crop.replaceChildren(); avatarPreview(); } break;
     case "menu": menuSheet(); break;
@@ -2235,7 +2247,7 @@ document.addEventListener("click", async (e) => {
     case "live-rm": liveRm(ds.k, ds.n); break;
     case "live-finish": liveFinish(); break;
     case "live-discard": if (armConfirm("live")) { liveClear(); toast("Session discarded"); render(); } break;
-    case "homeseg": { const y=window.scrollY||0; UI.homeSeg = ds.v; render(); requestAnimationFrame(()=>window.scrollTo({top:y,behavior:"instant"})); break; }
+    case "homeseg": { e.preventDefault(); renderAtScroll(()=>{ UI.homeSeg = ds.v; }); break; }
     case "leadby": UI.leadBy = ds.v; render(); break;
     case "leadper": UI.leadPer = ds.v; render(); break;
     case "mine-toggle": { const on = ds.on === "1"; mineToggle(ds.ids.split(","), on); toast(on ? "Added to my list" : "Removed from my list"); render(); break; }
@@ -2288,11 +2300,11 @@ document.addEventListener("click", async (e) => {
     case "club-pay": paySheet(ds.id || null, ds.uid || null); break;
     case "club-admin": if (isAdmin()) { const P = CLUB.profile; P.admins = P.admins || []; const i = P.admins.indexOf(ds.uid); if (i >= 0) P.admins.splice(i, 1); else P.admins.push(ds.uid); cset("club/" + P.id + "/profile", P).then(render); } break;
     case "club-leave": if (UI.confirm === "leave") { UI.confirm = null; clubLeave(); } else { UI.confirm = "leave"; render(); setTimeout(() => { if (UI.confirm === "leave") { UI.confirm = null; render(); } }, 3000); } break;
-    case "techview": { const y=window.scrollY||0; UI.tech.view = ds.v; UI.rollId = null; render(); requestAnimationFrame(()=>window.scrollTo({top:y,behavior:"instant"})); break; }
-    case "segview": { const y=window.scrollY||0,m=$("main")?.scrollTop||0; UI.seg[UI.tab] = ds.v; render(); requestAnimationFrame(()=>{window.scrollTo({top:y,behavior:"instant"});$("main")?.scrollTo({top:m,behavior:"instant"});}); break; }
+    case "techview": { e.preventDefault(); renderAtScroll(()=>{ UI.tech.view = ds.v; UI.rollId = null; }); break; }
+    case "segview": { e.preventDefault(); renderAtScroll(()=>{ UI.seg[UI.tab] = ds.v; }); break; }
     case "cal-nav": UI.calYm = ymShift(UI.calYm || todayIso().slice(0, 7), +ds.v); render(); break;
     case "anarange": UI.anaRange = ds.v; render(); break;
-    case "clubseg": { const y=window.scrollY||0,m=$("main")?.scrollTop||0; UI.clubSeg = ds.v; render(); requestAnimationFrame(()=>{window.scrollTo({top:y,behavior:"instant"});$("main")?.scrollTo({top:m,behavior:"instant"});}); break; }
+    case "clubseg": { e.preventDefault(); renderAtScroll(()=>{ UI.clubSeg = ds.v; }); break; }
     case "roll-start": rollStart(ds.pos); break;
     case "roll-by": if (UI.roll) { UI.roll.by = ds.v; UI.roll.grp = null; render(); } break;
     case "add-setup": setupEdit(null, ds.pos || null); break;
@@ -2926,7 +2938,7 @@ document.addEventListener('click',e=>{const b=e.target.closest('[data-act]');if(
  if(d.act==='post-options')postOptions(d.id,d.d);
  if(d.act==='settings-profile'){closeSheet();profileEditSheet();}
  if(d.act==='settings-password'){closeSheet();recoverySheet('password');}
- if(d.act==='profile-section'){const y=window.scrollY||0;UI.profileSection=d.v;UI.profileCount=12;render();requestAnimationFrame(()=>window.scrollTo({top:y,behavior:"instant"}));}
+ if(d.act==='profile-section'){renderAtScroll(()=>{UI.profileSection=d.v;UI.profileCount=12;});}
  if(d.act==='profile-more'){UI.profileCount+=12;render();}
  if(d.act==='session-date-open'){const calendar=$('session-date-calendar');calendar.hidden=!calendar.hidden;if(!calendar.hidden)sessionCalendar(sv('f-d').slice(0,7));}
  if(d.act==='session-calendar-month')sessionCalendar(addMonth(UI.sheet.calendarMonth,+d.step));
@@ -3054,7 +3066,7 @@ memberSheet=function(id){
  const rows=[['Name',m.n],['Email',m.email],['Phone',info.phone||m.phone],['Address',info.address],['Social',info.social],['Belt',m.belt],['Stripes',m.stripes||0],['Member since',m.since],['Belt since',m.beltSince],['Age',privateAgeSummary(m)]];
  openSheet('Member details','<div class="card-head">'+avatarHtml(m.n,m.av,'sm')+'<button class="text-button" data-act="member-details-edit" data-id="'+esc(id)+'">Засах</button></div><dl class="member-details">'+rows.filter(([,v])=>v!==undefined&&v!==null&&v!=='').map(([k,v])=>'<div><dt>'+esc(tr(k))+'</dt><dd>'+esc(v)+'</dd></div>').join('')+'</dl>',{});
 };
-seg=function(items,cur,act,scroll){return (scroll?'<div class="seg-wrap">':'')+'<div class="seg'+(scroll?' scroll':'')+'" role="tablist">'+items.map(i=>'<button role="tab" data-act="'+act+'" data-v="'+i[0]+'" aria-selected="'+(cur===i[0])+'">'+i[1]+'</button>').join('')+'</div>'+(scroll?'</div>':'');};
+seg=function(items,cur,act,scroll){return (scroll?'<div class="seg-wrap">':'')+'<div class="seg'+(scroll?' scroll':'')+'" role="tablist">'+items.map(i=>'<button type="button" role="tab" data-act="'+act+'" data-v="'+i[0]+'" aria-selected="'+(cur===i[0])+'">'+i[1]+'</button>').join('')+'</div>'+(scroll?'<span class="seg-more" aria-hidden="true">›</span></div><p class="seg-hint">Swipe for more sections</p>':'');};
 clubPartnerStats=function(){if(!COMMUNITY.partnerLoaded&&!COMMUNITY.partnerBusy)queueMicrotask(()=>loadPartners());const counts=new Map();for(const s of S.log.items)for(const id of new Set(s.with||[]))counts.set(id,(counts.get(id)||0)+1);for(const s of COMMUNITY.partners||[])if(s.owner!==myUid())counts.set(s.owner,(counts.get(s.owner)||0)+1);return '<section class="card"><h3>Training partners</h3><div class="partner-strip">'+[...counts].sort((a,b)=>b[1]-a[1]).map(([id,count])=>{const m=CLUB.members.list.find(x=>attKey(x)===id)||{};return '<div class="partner-tile">'+avatarHtml(m.username||m.n||'Member',m.av,'sm')+'<span>'+esc(m.username?'@'+m.username:m.n||'Member')+'</span><b>'+count+'×</b></div>';}).join('')+'</div>'+(!counts.size?'<p class="empty">No training partners yet.</p>':'')+'</section>';};
 const membersWithDetails=vClubMembers;
 vClubMembers=function(p,admin){const root=document.createElement('div');root.innerHTML=membersWithDetails(p,admin);root.querySelectorAll('[data-act="club-admin"],[data-act="club-leave"]').forEach(b=>{const card=b.closest('.card');if(card)card.remove();else b.remove();});return root.innerHTML;};
