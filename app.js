@@ -384,7 +384,7 @@ const TABS = [
   ["club", "Club", '<path d="M3 21V9l9-6 9 6v12"/><path d="M9 21v-7h6v7"/>'],
   ["me", "You", '<circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/>'],
 ];
-const SEGS = { me: [["prog", "Progress"], ["log", "Log"], ["drills", "Drills"], ["body", "Body"], ["belt", "Rank"], ["weight", "Weight"], ["comp", "Compete"]] };
+const SEGS = { me: [["log", "Log"], ["prog", "Progress"], ["drills", "Drills"], ["body", "Body"], ["belt", "Rank"], ["weight", "Weight"], ["comp", "Compete"]] };
 function renderTabs() {
   $("tabs").innerHTML = TABS.map((t) => t[0] === "rec" ? '<button class="rec" data-act="record" aria-label="Check in"><span><svg viewBox="0 0 24 24">' + t[2] + "</svg></span>" + t[1] + "</button>" : '<button data-act="tab" data-v="' + t[0] + '"' + (UI.tab === t[0] ? ' aria-current="page"' : "") + '><svg viewBox="0 0 24 24">' + t[2] + "</svg>" + t[1] + "</button>").join("");
 }
@@ -1645,9 +1645,6 @@ function progCalendar(ym) {
 }
 VIEWS.prog = function () {
   const today = todayIso(); const wk = mondayOf(today); let h = "";
-  // training calendar
-  const ym = UI.calYm || today.slice(0, 7); const cal = progCalendar(ym);
-  h += '<div class="card"><div class="card-head"><h3>Training calendar</h3></div><div class="calnav"><button class="icon-btn" data-act="cal-nav" data-v="-1" aria-label="Previous month">‹</button><b>' + monthTitle(ym) + '</b><button class="icon-btn" data-act="cal-nav" data-v="1" aria-label="Next month"' + (ym >= today.slice(0, 7) ? " disabled" : "") + ">›</button></div>" + cal.html + '<p class="muted small">Trained ' + cal.n + " out of " + cal.dim + " days</p></div>";
   // analytics
   const r = UI.anaRange || "month"; const from = r === "month" ? today.slice(0, 7) + "-01" : r === "30" ? addDays(today, -29) : "";
   const sess = S.log.items.filter((s) => s.d >= from); const subs = sess.reduce((a, s) => a + A.count(s.subs), 0), taps = sess.reduce((a, s) => a + A.count(s.taps), 0), min = sess.reduce((a, s) => a + (+s.min || 0), 0), rounds = sess.reduce((a, s) => a + (+s.rolls || 0), 0);
