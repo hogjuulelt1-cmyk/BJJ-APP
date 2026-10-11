@@ -3174,6 +3174,7 @@ document.addEventListener('touchmove',e=>{if(!on)return;const d=e.touches[0].cli
   requestAnimationFrame(()=>{el.style.transition='transform .34s cubic-bezier(.2,.8,.2,1)';el.style.transform='translate3d(0,0,0)';});
   timer=setTimeout(()=>{el.classList.remove('edge-bounce');el.style.transition='';el.style.transform='';bouncing=false;},420);
  }
+ let startY=0,releaseDir='',watchTimer=null;
  window.addEventListener('scroll',()=>{
   const max=Math.max(0,document.documentElement.scrollHeight-innerHeight),now=window.scrollY||0;
   if(!bouncing){
@@ -3181,5 +3182,15 @@ document.addEventListener('touchmove',e=>{if(!on)return;const d=e.touches[0].cli
    else if(max>0&&now>=max-1&&previous<now-1)bounce('bottom');
   }
   previous=now;
+ },{passive:true});
+ document.addEventListener('touchstart',e=>{if(e.touches[0]){startY=e.touches[0].clientY;releaseDir='';}},{passive:true});
+ document.addEventListener('touchmove',e=>{if(e.touches[0]){const dy=e.touches[0].clientY-startY;if(Math.abs(dy)>12)releaseDir=dy<0?'bottom':'top';}},{passive:true});
+ document.addEventListener('touchend',()=>{
+  const dir=releaseDir;releaseDir='';if(!dir)return;clearInterval(watchTimer);
+  const began=performance.now();watchTimer=setInterval(()=>{
+   const max=Math.max(0,document.documentElement.scrollHeight-innerHeight),now=window.scrollY||0;
+   if((dir==='bottom'&&max>0&&now>=max-1)||(dir==='top'&&now<=1)){clearInterval(watchTimer);watchTimer=null;bounce(dir);}
+   else if(performance.now()-began>900){clearInterval(watchTimer);watchTimer=null;}
+  },24);
  },{passive:true});
 })();
