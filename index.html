@@ -670,7 +670,7 @@ body.is-scrolling button:active,body.is-scrolling a:active,body.is-scrolling .bt
 /* Strong visible affordance for additional horizontal submenu items */
 .seg-wrap .seg-more{display:flex!important;visibility:visible!important;opacity:1!important;position:absolute;right:5px;top:50%;bottom:auto;width:32px;height:32px;transform:translateY(-50%);z-index:20;align-items:center;justify-content:center;color:var(--ink);font-size:0;font-weight:800;line-height:1;background:var(--surface);border:1px solid var(--line);border-radius:50%;box-shadow:0 3px 10px rgba(15,20,25,.14);pointer-events:none}
 .seg-wrap .seg-more::after{content:"›";font-size:1.55rem;line-height:1;margin-left:1px}/* Always-visible submenu affordance on the container itself */
-.seg-wrap{position:relative!important;overflow:visible!important}
+.seg-wrap{position:sticky!important;top:calc(var(--header-height,76px) + 2px);z-index:24;background:var(--bg);padding-block:4px;margin-block:-4px;overflow:visible!important}
 /* Compact single-screen sign in */
 body:has(.auth-reference){padding-bottom:0;overflow:hidden}
 body:has(.auth-reference)::after{display:none!important}
