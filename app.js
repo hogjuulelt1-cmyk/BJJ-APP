@@ -1066,7 +1066,7 @@ function vLearn() {
   const L = UI.learn;
   if (!L) {
     const cards = learnCards(); const due = cards.filter((c) => c.due && !c.new).length, seen = cards.filter((c) => !c.new).length; const weak = cards.filter((c) => c.f >= 2).sort((a, b) => b.f - a.f).slice(0, 6);
-    let h = '<div class="card"><div class="card-head"><h3>Learn</h3><span class="muted small">quiz yourself on your own tree</span></div><p class="small">Ten questions from your positions: which move fits the situation, what you answer when they defend, where a move lands, and the first thing to do. Right answers come back later, wrong ones tomorrow.</p>' +
+    let h = '<div class="card"><div class="card-head"><h3>Learn</h3><span class="muted small">quiz yourself on your own tree</span></div><p class="small">Ten questions from your positions: which move fits the situation, what you answer when they defend, where a move lands, and the first thing to do.</p>' +
       '<div class="summary"><div class="stat"><b>' + due + '</b><span>due today</span></div><div class="stat"><b>' + seen + '</b><span>seen</span></div><div class="stat"><b>' + cards.length + '</b><span>cards</span></div></div><button class="btn wide" data-act="learn-start">Start · 10 questions</button></div>';
     if (weak.length) h += '<div class="card"><h3>Weak spots</h3><div class="list">' + weak.map((c) => '<button class="node-row" data-act="open" data-id="' + c.n.id + '"><span class="pict" style="color:' + nodeColor(c.n) + '">' + iconFor(c.n) + '</span><div class="txt"><b>' + esc(c.n.n) + "</b><small>" + esc(c.pos.n) + " · missed " + c.f + "×</small></div>" + CHEV + "</button>").join("") + "</div></div>";
     return h;
@@ -2679,7 +2679,7 @@ function updateFinishStats() {
 function postTime(p) {
  const posted=new Date(+p.t);
  if(!p.t || Number.isNaN(posted.getTime()))return '<span>' + tr('Training date') + ' ' + fmtLong(p.d) + '</span>';
- const locale=I18N.lang==='mn'?'mn-MN':'en-GB';
+ const locale='en-GB';
  return '<time class="post-time" datetime="' + posted.toISOString() + '" title="' + esc(posted.toLocaleString(locale)) + '">' + tr('Posted') + ' ' + posted.toLocaleDateString(locale,{month:'numeric',day:'numeric'}) + ' · ' + posted.toLocaleTimeString(locale,{hour:'2-digit',minute:'2-digit',hour12:false}) + '</time>';
 }
 function postAudience(p) {
