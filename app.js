@@ -1666,7 +1666,7 @@ VIEWS.prog = function () {
 function profileHead() {
   const name = myName(); const b = beltDef(S.belt.track, S.belt.belt); const items = S.log.items; const totalMin = items.reduce((a, x) => a + (+x.min || 0), 0); const sk = streaks();
   const ms = CLUB.id && !clubNeeds() ? membership(myUid()) : null;
-  return '<div class="card profile"><div class="prow">' + avatarHtml(name, S.settings.avatar) + '<div class="pinfo"><h2>' + esc(name) + '</h2><p class="muted small">' + (CLUB.profile ? esc(CLUB.profile.n) + " · " : "") + esc(b.n) + " belt" + (S.belt.stripes ? " · " + S.belt.stripes + " stripes" : "") + "</p></div>" +
+  return '<button class="back you-back" data-act="tab" data-v="home">‹ Back</button><div class="card profile"><div class="prow">' + avatarHtml(name, S.settings.avatar) + '<div class="pinfo"><h2>' + esc(name) + '</h2><p class="muted small">' + (CLUB.profile ? esc(CLUB.profile.n) + " · " : "") + esc(b.n) + " belt" + (S.belt.stripes ? " · " + S.belt.stripes + " stripes" : "") + "</p></div>" +
     (ms && ms.state !== "none" ? '<span class="pill ' + (ms.state === "active" ? "ok" : "bad") + '">' + (ms.coach ? "Coach · Active" : ms.state === "active" ? "Active" : "Expired") + "</span>" : "") + "</div>" +
     '<div class="summary"><div class="stat"><b>' + items.length + '</b><span>sessions</span></div><div class="stat"><b>' + hoursFmt(totalMin) + '</b><span>hours</span></div><div class="stat"><b>' + sk.weeks + '</b><span>week streak</span></div></div>' + xpCard() + "</div>";
 }
@@ -2211,7 +2211,7 @@ document.addEventListener("click", async (e) => {
   if (act === "pk-dec") { pkChange(ds.pk, +ds.i, -1); return; }
   if (act === "pk-rm") { pkChange(ds.pk, +ds.i, 0); return; }
   switch (act) {
-    case "tab": { const order = TABS.map((t) => t[0]); const anim = order.indexOf(ds.v) > order.indexOf(UI.tab) ? "enter-l" : "enter-r"; UI.tab = ds.v; try { localStorage.setItem("bjj-tab", ds.v); } catch (x) {} go(anim); break; }
+    case "tab": { const order = TABS.map((t) => t[0]); const anim = order.indexOf(ds.v) > order.indexOf(UI.tab) ? "enter-l" : "enter-r"; if(ds.v==="me") UI.seg.me="log"; UI.tab = ds.v; try { localStorage.setItem("bjj-tab", ds.v); } catch (x) {} go(anim); break; }
     case "settings": settingsSheet(); break;
     case "avatar-rm": if (UI.sheet) { UI.sheet.photoVersion = (UI.sheet.photoVersion || 0) + 1; UI.sheet.photoLoading = false; UI.sheet.av = ""; const crop = $("pf-crop"); if (crop) crop.replaceChildren(); avatarPreview(); } break;
     case "menu": menuSheet(); break;
