@@ -698,6 +698,15 @@ body:has(.auth-reference)::after{display:none!important}
 .seg button.seg-pay-highlight{color:var(--accent);background:var(--accent-soft);border:1px solid var(--accent);font-weight:800}
 .seg button.seg-pay-highlight[aria-selected="true"]{color:var(--accent-ink);background:var(--accent);border-color:var(--accent);box-shadow:0 2px 8px rgba(15,20,25,.18)}
 
+/* Payment submenu status text and active indicator */
+.seg button.seg-pay-highlight[data-pay-tone]{position:relative;background:transparent!important;border-color:transparent!important;box-shadow:none!important;font-weight:750}
+.seg button.seg-pay-highlight[data-pay-tone="pay-tab-paid"]{color:var(--ok)!important}
+.seg button.seg-pay-highlight[data-pay-tone="pay-tab-soon"]{color:var(--warn)!important}
+.seg button.seg-pay-highlight[data-pay-tone="pay-tab-expired"]{color:var(--t-td)!important}
+.seg button.seg-pay-highlight[data-pay-tone="pay-tab-neutral"]{color:var(--muted)!important}
+.seg button.seg-pay-highlight[data-pay-tone][aria-selected="true"]{background:transparent!important;border-color:transparent!important;box-shadow:none!important;font-weight:900;text-decoration:none}
+.seg button.seg-pay-highlight[data-pay-tone][aria-selected="true"]::after{content:"";position:absolute;left:14%;right:14%;bottom:3px;height:3px;border-radius:999px;background:currentColor}
+
 /* Coach notification payment actions */
 .notice-request{align-items:center;flex-wrap:wrap;row-gap:10px}
 .notice-request .txt{flex:1;min-width:150px}
