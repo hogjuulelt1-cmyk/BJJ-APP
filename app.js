@@ -2092,9 +2092,9 @@ function payNowSheet() {
     (drop ? '<div class="field"><label>For</label><p class="small" style="margin:0"><b>Drop-in · ' + fmtD(todayIso()) + "</b></p></div>" : '<div class="grid2">' + field("p-per", "For month", inp("p-per", start, "month")) + field("p-months", "Months", inp("p-months", plan.months, "number", 'inputmode="numeric" min="1" max="24"')) + "</div>") +
     '<div class="grid2">' + field("p-amt", "Amount (₮)", inp("p-amt", plan.price, "number", 'inputmode="numeric"')) + field("p-note", "Note", inp("p-note", "", "text", 'placeholder="transfer / cash / QPay"')) + "</div>";
   openSheet("Pay " + P.n, b, { saveLabel: "I have paid", async onSave() {
-    const doc = CLUB.pay[me] || { items: [] }; const months = drop ? 1 : Math.min(24, Math.max(1, Math.round(+sv("p-months") || plan.months || 1))); const total = +sv("p-amt") || plan.price || 0; const per0 = drop ? thisMonth() : sv("p-per") || start; const group = uid(); const each = Math.floor(total / months); const note = sv("p-note").trim(); const d = todayIso();
+    const doc = CLUB.pay[me] || { items: [] }; const months = drop ? 1 : Math.min(24, Math.max(1, Math.round(+sv("p-months") || plan.months || 1))); const total = +sv("p-amt") || plan.price || 0; const per0 = drop ? thisMonth() : sv("p-per") || start; const group = uid(); const each = Math.floor(total / months); const note = sv("p-note").trim(); const d = todayIso(); if (!total || total < 1) { toast("Enter a valid payment amount"); return false; }
     for (let i = 0; i < months; i++) { const it = { id: uid(), d, per: drop ? per0 : addMonth(per0, i), amt: i ? each : total - each * (months - 1), note, by: me, status: "pending", plan: plan.id, group }; if (drop) it.drop = true; doc.items.push(it); }
-    if (!total || total < 1) { toast("Enter a valid payment amount"); return false; } CLUB.pay[me] = doc; await cset("club/" + P.id + "/pay/" + me, doc); closeSheet(); toast("Sent to your coach"); render(); return false;
+    CLUB.pay[me] = doc; await cset("club/" + P.id + "/pay/" + me, doc); closeSheet(); toast("Sent to your coach"); render(); return false;
   } });
 }
 async function confirmPay(uidFor, id) {
