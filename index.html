@@ -693,6 +693,10 @@ body:has(.auth-reference)::after{display:none!important}
 .auth-reference .remember-row{margin:10px 0}
 .auth-reference .auth-recovery{margin-top:8px;padding-top:6px}
 .auth-reference .auth-actions{padding-top:12px}
+
+/* Payment tab highlight */
+.seg button.seg-pay-highlight{color:var(--accent);background:var(--accent-soft);border:1px solid var(--accent);font-weight:800}
+.seg button.seg-pay-highlight[aria-selected="true"]{color:var(--accent-ink);background:var(--accent);border-color:var(--accent);box-shadow:0 2px 8px rgba(15,20,25,.18)}
 </style>
 <link rel="stylesheet" href="ui-feedback.css?v=1">
 <link rel="stylesheet" href="mobile-refresh.css?v=13">
