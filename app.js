@@ -3148,3 +3148,15 @@ document.addEventListener('touchmove',e=>{if(!on)return;const d=e.touches[0].cli
 
 
 /* Ensure latest profile-photo fallback is deployed. */
+
+
+/* Prevent accidental taps during scroll */
+(function(){
+ let timer=null;
+ function moving(){document.body.classList.add('is-scrolling');clearTimeout(timer);}
+ function settled(){clearTimeout(timer);timer=setTimeout(()=>document.body.classList.remove('is-scrolling'),260);}
+ window.addEventListener('scroll',()=>{moving();settled();},{passive:true});
+ document.addEventListener('touchmove',()=>{moving();settled();},{passive:true});
+ document.addEventListener('touchend',settled,{passive:true});
+ document.addEventListener('touchcancel',settled,{passive:true});
+})();
