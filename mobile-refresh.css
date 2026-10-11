@@ -50,3 +50,7 @@ body[data-page=tech] #main>.seg-wrap,body[data-page=me] #main>.seg-wrap{top:var(
 body[data-page=tech] #main>.seg-wrap .seg,body[data-page=me] #main>.seg-wrap .seg{margin:0}
 
 .pay-row{display:flex;align-items:center;gap:10px;min-width:0}.pay-row>.txt{flex:1;min-width:0}.pay-row>.txt b,.pay-row>.txt small{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.pay-row>.pill{flex:none}.pay-row>.pay-delete{flex:none;margin-left:0;padding:4px 9px;min-height:32px}
+
+/* Keep the public club hero logo a true square circle. */
+.club-public-hero>.club-logo.large{display:flex;width:88px!important;height:88px!important;min-width:88px;max-width:88px;min-height:88px;max-height:88px;flex:0 0 88px;aspect-ratio:1/1;border-radius:50%;overflow:hidden}
+.club-public-hero>.club-logo.large img{display:block;width:100%;height:100%;min-width:0;min-height:0;aspect-ratio:1/1;object-fit:contain}
