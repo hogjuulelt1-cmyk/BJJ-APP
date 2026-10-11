@@ -319,7 +319,7 @@ async function boot() {
 }
 if (!SB.url || !SB.key) { $("root").innerHTML = '<div id="login" class="card"><h1>Not configured</h1><p class="small">config.js has no Supabase project. The console only works with the cloud setup.</p></div>'; }
 else { SB.load(); boot(); }
-setInterval(async()=>{if(document.hidden||document.querySelector(".modal")||!SB.session)return;try{await loadAll();render();}catch(_){}},30000);
+setInterval(async()=>{if(document.hidden||document.querySelector(".modal")||!SB.session)return;try{const refreshed=await loadAll();if(refreshed!==false)render();}catch(_){}},30000);
 
 /* PATCH: prevent console form reset while editing */
 (function(){
