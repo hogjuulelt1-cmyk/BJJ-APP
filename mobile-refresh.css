@@ -48,3 +48,5 @@ body[data-page=club] #main>.seg-wrap,body[data-page=profile] #main>.seg-wrap,bod
 .feed-photo{display:block;width:100%;aspect-ratio:4/3;object-fit:cover;border-radius:15px;margin:12px 0 14px;background:var(--sunk)}
 body[data-page=tech] #main>.seg-wrap,body[data-page=me] #main>.seg-wrap{top:var(--header-height,76px);padding:0;margin:0;border-radius:0;box-shadow:0 -6px 0 var(--bg);isolation:isolate}
 body[data-page=tech] #main>.seg-wrap .seg,body[data-page=me] #main>.seg-wrap .seg{margin:0}
+
+.pay-row{display:flex;align-items:center;gap:10px;min-width:0}.pay-row>.txt{flex:1;min-width:0}.pay-row>.txt b,.pay-row>.txt small{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.pay-row>.pill{flex:none}.pay-row>.pay-delete{flex:none;margin-left:0;padding:4px 9px;min-height:32px}
