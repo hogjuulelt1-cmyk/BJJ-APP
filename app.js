@@ -3150,15 +3150,17 @@ document.addEventListener('touchmove',e=>{if(!on)return;const d=e.touches[0].cli
 /* Ensure latest profile-photo fallback is deployed. */
 
 
-/* Prevent accidental taps during scroll */
+/* Prevent accidental press states and clicks during scroll gestures */
 (function(){
- let timer=null;
+ let timer=null,moved=false,sx=0,sy=0,suppress=false;
  function moving(){document.body.classList.add('is-scrolling');clearTimeout(timer);}
- function settled(){clearTimeout(timer);timer=setTimeout(()=>document.body.classList.remove('is-scrolling'),260);}
+ function settled(){clearTimeout(timer);timer=setTimeout(()=>document.body.classList.remove('is-scrolling'),420);}
+ document.addEventListener('touchstart',e=>{const t=e.touches[0];if(!t)return;moved=false;sx=t.clientX;sy=t.clientY;},{passive:true});
+ document.addEventListener('touchmove',e=>{const t=e.touches[0];if(!t)return;const dx=t.clientX-sx,dy=t.clientY-sy;if(Math.hypot(dx,dy)>10){moved=true;moving();settled();}},{passive:true});
+ document.addEventListener('touchend',()=>{if(moved){suppress=true;setTimeout(()=>{suppress=false;},420);}settled();},{passive:true});
+ document.addEventListener('touchcancel',()=>{moved=false;settled();},{passive:true});
+ document.addEventListener('click',e=>{if(!suppress)return;suppress=false;e.preventDefault();e.stopImmediatePropagation();},{capture:true});
  window.addEventListener('scroll',()=>{moving();settled();},{passive:true});
- document.addEventListener('touchmove',()=>{moving();settled();},{passive:true});
- document.addEventListener('touchend',settled,{passive:true});
- document.addEventListener('touchcancel',settled,{passive:true});
 })();
 
 
