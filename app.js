@@ -2235,7 +2235,7 @@ document.addEventListener("click", async (e) => {
     case "live-rm": liveRm(ds.k, ds.n); break;
     case "live-finish": liveFinish(); break;
     case "live-discard": if (armConfirm("live")) { liveClear(); toast("Session discarded"); render(); } break;
-    case "homeseg": UI.homeSeg = ds.v; render(); arrowSubmenuStart("homeseg"); break;
+    case "homeseg": { const y=window.scrollY||0; UI.homeSeg = ds.v; render(); requestAnimationFrame(()=>window.scrollTo({top:y,behavior:"instant"})); break; }
     case "leadby": UI.leadBy = ds.v; render(); break;
     case "leadper": UI.leadPer = ds.v; render(); break;
     case "mine-toggle": { const on = ds.on === "1"; mineToggle(ds.ids.split(","), on); toast(on ? "Added to my list" : "Removed from my list"); render(); break; }
@@ -2288,11 +2288,11 @@ document.addEventListener("click", async (e) => {
     case "club-pay": paySheet(ds.id || null, ds.uid || null); break;
     case "club-admin": if (isAdmin()) { const P = CLUB.profile; P.admins = P.admins || []; const i = P.admins.indexOf(ds.uid); if (i >= 0) P.admins.splice(i, 1); else P.admins.push(ds.uid); cset("club/" + P.id + "/profile", P).then(render); } break;
     case "club-leave": if (UI.confirm === "leave") { UI.confirm = null; clubLeave(); } else { UI.confirm = "leave"; render(); setTimeout(() => { if (UI.confirm === "leave") { UI.confirm = null; render(); } }, 3000); } break;
-    case "techview": UI.tech.view = ds.v; UI.rollId = null; render(); arrowSubmenuStart("techview"); break;
-    case "segview": UI.seg[UI.tab] = ds.v; render(); arrowSubmenuStart("segview"); break;
+    case "techview": { const y=window.scrollY||0; UI.tech.view = ds.v; UI.rollId = null; render(); requestAnimationFrame(()=>window.scrollTo({top:y,behavior:"instant"})); break; }
+    case "segview": { const y=window.scrollY||0,m=$("main")?.scrollTop||0; UI.seg[UI.tab] = ds.v; render(); requestAnimationFrame(()=>{window.scrollTo({top:y,behavior:"instant"});$("main")?.scrollTo({top:m,behavior:"instant"});}); break; }
     case "cal-nav": UI.calYm = ymShift(UI.calYm || todayIso().slice(0, 7), +ds.v); render(); break;
     case "anarange": UI.anaRange = ds.v; render(); break;
-    case "clubseg": UI.clubSeg = ds.v; render(); arrowSubmenuStart("clubseg"); break;
+    case "clubseg": { const y=window.scrollY||0,m=$("main")?.scrollTop||0; UI.clubSeg = ds.v; render(); requestAnimationFrame(()=>{window.scrollTo({top:y,behavior:"instant"});$("main")?.scrollTo({top:m,behavior:"instant"});}); break; }
     case "roll-start": rollStart(ds.pos); break;
     case "roll-by": if (UI.roll) { UI.roll.by = ds.v; UI.roll.grp = null; render(); } break;
     case "add-setup": setupEdit(null, ds.pos || null); break;
@@ -2926,7 +2926,7 @@ document.addEventListener('click',e=>{const b=e.target.closest('[data-act]');if(
  if(d.act==='post-options')postOptions(d.id,d.d);
  if(d.act==='settings-profile'){closeSheet();profileEditSheet();}
  if(d.act==='settings-password'){closeSheet();recoverySheet('password');}
- if(d.act==='profile-section'){UI.profileSection=d.v;UI.profileCount=12;render();arrowSubmenuStart("profile-section");}
+ if(d.act==='profile-section'){const y=window.scrollY||0;UI.profileSection=d.v;UI.profileCount=12;render();requestAnimationFrame(()=>window.scrollTo({top:y,behavior:"instant"}));}
  if(d.act==='profile-more'){UI.profileCount+=12;render();}
  if(d.act==='session-date-open'){const calendar=$('session-date-calendar');calendar.hidden=!calendar.hidden;if(!calendar.hidden)sessionCalendar(sv('f-d').slice(0,7));}
  if(d.act==='session-calendar-month')sessionCalendar(addMonth(UI.sheet.calendarMonth,+d.step));
