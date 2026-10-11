@@ -667,7 +667,9 @@ body.is-scrolling button:active,body.is-scrolling a:active,body.is-scrolling .bt
 .seg-wrap .seg{overflow-x:auto;scrollbar-width:none;padding-right:34px!important}
 .seg-wrap .seg::-webkit-scrollbar{display:none}
 .seg-wrap .seg-more{display:grid!important;position:absolute;right:0;top:0;bottom:0;width:36px;height:auto;z-index:4;place-items:center;color:var(--muted);font-size:1.8rem;line-height:1;background:linear-gradient(90deg,transparent,var(--bg) 48%);pointer-events:none}
-</style>
+/* Strong visible affordance for additional horizontal submenu items */
+.seg-wrap .seg-more{display:flex!important;visibility:visible!important;opacity:1!important;position:absolute;right:5px;top:50%;bottom:auto;width:32px;height:32px;transform:translateY(-50%);z-index:20;align-items:center;justify-content:center;color:var(--ink);font-size:0;font-weight:800;line-height:1;background:var(--surface);border:1px solid var(--line);border-radius:50%;box-shadow:0 3px 10px rgba(15,20,25,.14);pointer-events:none}
+.seg-wrap .seg-more::after{content:"›";font-size:1.55rem;line-height:1;margin-left:1px}</style>
 <link rel="stylesheet" href="ui-feedback.css?v=1">
 <link rel="stylesheet" href="mobile-refresh.css?v=13">
 <link rel="stylesheet" href="community.css?v=9">
