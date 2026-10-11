@@ -3071,7 +3071,7 @@ document.addEventListener('click',e=>{const b=e.target.closest('[data-act]');if(
  if(d.act==='member-details-edit')editMemberDetails(d.id);
  if(d.act==='notice-read'){S.settings.noticeSeen=S.settings.noticeSeen||{};S.settings.noticeSeen[CLUB.id]=[...new Set([...(S.settings.noticeSeen[CLUB.id]||[]),d.id])];save('settings');render();updateNoticeBadge();}
  if(d.act==='teacher-move'&&UI.sheet?.clubDraft){const xs=UI.sheet.clubDraft.teachers,i=+d.i,j=i+(+d.dir);if(j>=0&&j<xs.length){[xs[i],xs[j]]=[xs[j],xs[i]];clubMediaRows();}}
- if(d.act==='clubseg')requestAnimationFrame(()=>{const menu=document.querySelector('#main>.seg-wrap');if(menu){const top=menu.getBoundingClientRect().top+scrollY-(document.querySelector('header.top')?.offsetHeight||76);window.scrollTo({top:Math.max(0,top),behavior:'instant'});}});
+ /* club submenu position is handled by clubseg */
 });
 const renderWithHeader=render;
 render=function(anim){renderWithHeader(anim);document.documentElement.style.setProperty('--header-height',(document.querySelector('header.top')?.offsetHeight||76)+'px');};
@@ -3095,7 +3095,7 @@ const homeFinal=VIEWS.home;
 VIEWS.home=function(){let h=homeFinal();const block=h.match(/<section class="card suggested suggested-inline">[\s\S]*?<\/section>/);if(block){h=h.replace(block[0],'');const pos=h.indexOf('<article class="card feed"');if(pos>=0){const end=h.indexOf('</article>',pos)+('</article>').length;h=h.slice(0,end)+block[0]+h.slice(end);}else h+=block[0];}return h;};
 document.addEventListener('click',e=>{const b=e.target.closest('[data-act="discover-dismiss"]');if(!b)return;S.settings.discoveryDismissed=[...new Set([...(S.settings.discoveryDismissed||[]),b.dataset.uid])];save('settings');render();});
 setInterval(()=>{if(!document.body.classList.contains('locked')&&document.visibilityState==='visible'&&UI.tab==='home'&&!document.querySelector('#arrow-age'))render();},8000);
-document.addEventListener('click',e=>{const b=e.target.closest('#main>.seg-wrap .seg button');if(!b)return;requestAnimationFrame(()=>{const m=b.closest('.seg-wrap');if(m){const y=m.getBoundingClientRect().top+scrollY-(document.querySelector('header.top')?.offsetHeight||76);window.scrollTo({top:Math.max(0,y),behavior:'instant'});}});});
+/* submenu clicks are handled by their tab action */
 
 
 async function arrowDeletePayment(id){const me=myUid(),doc=CLUB.pay[me];if(!doc)return;doc.items=(doc.items||[]).filter(x=>x.id!==id&&x.group!==((doc.items||[]).find(y=>y.id===id)||{}).group);await cset('club/'+CLUB.id+'/pay/'+me,doc);CLUB.pay[me]=doc;toast('Payment deleted');render();}
