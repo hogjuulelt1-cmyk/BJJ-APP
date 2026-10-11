@@ -41,3 +41,4 @@ body[data-page=club] #main>.seg-wrap,body[data-page=profile] #main>.seg-wrap,bod
 .finish-photo-panel>div{display:grid;gap:3px}.finish-photo-panel small{color:var(--muted)}
 .finish-photo-panel .photo-add{justify-content:center}.finish-photo-panel .photo-remove{justify-content:center}.finish-photo-name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .feed-admin-delete{margin-top:12px;width:100%}.notice-request{border-left:3px solid var(--accent)}
+.pay-row{position:relative}.pay-delete{margin-left:auto;flex:none;color:var(--bad)!important}
