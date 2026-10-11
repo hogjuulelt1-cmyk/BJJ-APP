@@ -713,6 +713,10 @@ body:has(.auth-reference)::after{display:none!important}
 /* Keep the Settings sheet footer tight to the bottom button */
 .settings-sheet{padding-bottom:max(4px,env(safe-area-inset-bottom,0px))}
 .settings-sheet .foot{margin-top:0;padding:8px 0 0}
+
+.notice-request[data-act="notice-pay-open"]{cursor:pointer}
+.notice-request[data-act="notice-pay-open"]:hover{background:var(--sunk)}
+.payment-awaiting{margin:12px 0 0;color:var(--warn);font-weight:600}
 </style>
 <link rel="stylesheet" href="ui-feedback.css?v=1">
 <link rel="stylesheet" href="mobile-refresh.css?v=13">
