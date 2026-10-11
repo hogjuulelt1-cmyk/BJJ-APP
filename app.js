@@ -2142,7 +2142,7 @@ function vClubMembers(P, adm) {
   const groups = {}; for (const m of ms) { const b = (m.belt || "white").split("-")[0]; (groups[b] = groups[b] || []).push(m); }
   const order = Object.keys(groups).sort((a, b) => BELT_ORDER.indexOf(b) - BELT_ORDER.indexOf(a));
   if (!ms.length) h += '<p class="empty">Nobody here' + (f !== "all" ? " with this filter" : "") + ".</p>";
-  else h += '<div class="list">' + order.map((b) => '<div class="group-label" style="color:' + (BELT_COLOR[b] || "var(--muted)") + '">' + b + " · " + groups[b].length + "</div>" + groups[b].map((m) => { const isA = (P.admins || []).includes(m.uid); const medals = ((CLUB.results && CLUB.results.list) || []).filter((r) => r.uid === m.uid && r.status === "ok").length; return '<button class="row" data-act="' + (adm ? "club-member" : "none") + '" data-id="' + m.id + '"><span class="bdot" style="background:' + (BELT_COLOR[b] || "#999") + '"></span><div class="txt"><b>' + esc(m.n || m.email || "Member") + (isA ? ' <span class="pill na">coach</span>' : "") + (m.comp ? ' <span class="pill ok">comp</span>' : "") + (!m.uid ? ' <span class="pill warn">no account</span>' : "") + "</b><small>" + (m.track === "kids" ? "kids · " : "") + (m.stripes ? m.stripes + " stripes · " : "") + attN(m) + " days this month" + (adm && (CLUB.privateAges || {})[m.uid || m.id] != null ? " · " + privateAgeSummary(m) : "") + (medals ? " · " + medals + " medal" + (medals > 1 ? "s" : "") : "") + "</small></div>" + (adm ? payPill(payState(m)) + CHEV : "") + "</button>"; }).join("")).join("") + "</div>";
+  else h += '<div class="list">' + order.map((b) => '<div class="group-label" style="color:' + (BELT_COLOR[b] || "var(--muted)") + '">' + b + " · " + groups[b].length + "</div>" + groups[b].map((m) => { const isA = (P.admins || []).includes(m.uid); const medals = ((CLUB.results && CLUB.results.list) || []).filter((r) => r.uid === m.uid && r.status === "ok").length; return '<button class="row member-row-round" data-act="' + (adm ? "club-member" : "none") + '" data-id="' + m.id + '">' + avatarHtml(m.n || m.email || "Member",m.av,"sm") + '<span class="bdot" style="background:' + (BELT_COLOR[b] || "#999") + '"></span><div class="txt"><b>' + esc(m.n || m.email || "Member") + (isA ? ' <span class="pill na">coach</span>' : "") + (m.comp ? ' <span class="pill ok">comp</span>' : "") + (!m.uid ? ' <span class="pill warn">no account</span>' : "") + "</b><small>" + (m.track === "kids" ? "kids · " : "") + (m.stripes ? m.stripes + " stripes · " : "") + attN(m) + " days this month" + (adm && (CLUB.privateAges || {})[m.uid || m.id] != null ? " · " + privateAgeSummary(m) : "") + (medals ? " · " + medals + " medal" + (medals > 1 ? "s" : "") : "") + "</small></div>" + (adm ? payPill(payState(m)) + CHEV : "") + "</button>"; }).join("")).join("") + "</div>";
   if (adm) h += '<button class="btn ghost wide" data-act="club-member">+ Add a member</button>';
   h += "</div>";
   if (adm) {
@@ -2345,7 +2345,7 @@ document.addEventListener("click", async (e) => {
     case "add-routine": routineSheet(); break;
     case "edit-routine": routineSheet(ds.id); break;
     case "del-routine": if (armConfirm(ds.key)) { S.body.routines = S.body.routines.filter((r) => r.id !== ds.id); save("body"); render(); } break;
-    case "belttrack": if (!isAdmin()) break; S.belt.track = ds.v; if (!SEED.belts[ds.v].some((b) => b.id === S.belt.belt)) S.belt.belt = "white"; save("belt"); render(); break;
+    case "belttrack": S.belt.track = ds.v; if (!SEED.belts[ds.v].some((b) => b.id === S.belt.belt)) S.belt.belt = "white"; save("belt"); render(); break;
     case "add-promo": if (isAdmin()) memberSheet(myUid()); break;
     case "edit-promo": promoSheet(ds.id); break;
     case "edit-weight": weightSheet(ds.id); break;
@@ -2490,7 +2490,7 @@ VIEWS.home = function () {
   if (clubNeeds()) return h;
   if (!CLUB.id) return h + '<div class="card"><p class="empty">Join a club to see your teammates’ training.</p><button class="btn wide" data-act="tab" data-v="club">Find my club</button></div>';
   if (!FEED.ready) return h;
-  return h + suggestedFriends() + '<div class="feed-heading"><h3>Training feed</h3></div><section id="feed-list" aria-label="Training feed">' + unifiedPosts().map(feedCard).join('') + '</section><div id="feed-tail"></div>';
+  return h + suggestedFriends() + '<div class="feed-heading"><h3>Training feed</h3><button class="icon-btn feed-add" data-act="feed-add" aria-label="Finish training">＋</button></div><section id="feed-list" aria-label="Training feed">' + unifiedPosts().map(feedCard).join('') + '</section><div id="feed-tail"></div>';
 };
 function unifiedPosts() { const friends=new Set(acceptedFriends()); return eligiblePosts().filter(p => p.audience !== 'private' && (p.audience !== 'friends' || p.uid === myUid() || friends.has(p.uid))).sort(window.ARROW_FEED.compare); }
 function friendship(id) { return (((CLUB.friends || {}).list) || []).find((r) => (r.from === myUid() && r.to === id) || (r.to === myUid() && r.from === id)); }
@@ -2591,7 +2591,7 @@ feedPost = async function(rec, previousDate) {
 const ossSave=feedKudos;
 feedKudos=async function(id,d){await ossSave(id,d);await decryptFeed();render();};
 const beltView=VIEWS.belt;
-VIEWS.belt=function(){ let h=beltView(); if(!isAdmin()) h=h.replace(/<div class="actions"><button class="btn" data-act="add-promo">[\s\S]*?<\/div>/g,'<p class="muted small">Your coach manages your belt</p>').replace(/data-act="edit-promo"/g,'data-act="none"').replace(/data-act="belttrack"/g,'data-act="none"'); return h; };
+VIEWS.belt=function(){ let h=beltView(); if(!isAdmin()) h=h.replace(/<div class="actions"><button class="btn" data-act="add-promo">[\s\S]*?<\/div>/g,'<p class="muted small">Your coach manages your belt</p>').replace(/data-act="edit-promo"/g,'data-act="none"'); return h; };
 const profileSheetEdit=profileEditSheet;
 profileEditSheet=function(){profileSheetEdit();$('sheet').classList.add('modern-sheet');$('sheet-body').querySelector('h2').insertAdjacentHTML('afterend','<p class="muted small">Your identity on and off the mat.</p>');};
 const closeOld=closeSheet;
@@ -3131,6 +3131,19 @@ function resetPull(){pullTargets().forEach(el=>{el.style.transition='transform .
 document.addEventListener('touchmove',e=>{if(!on)return;const d=e.touches[0].clientY-y;if(d<=0)return;const lift=Math.min(180,Math.round(d*.55));pullTargets().forEach(el=>{el.style.transition='none';el.style.transform='translateY('+lift+'px)';});const x=ind();x.innerHTML=d>140?'<span class="pull-spin">↻</span>'+(d>180?'Release to refresh':'Keep pulling…'):'';x.style.opacity=d>120?Math.min(1,(d-120)/60):0;},{passive:true});
  document.addEventListener('touchend',async e=>{if(!on)return;on=false;const d=(e.changedTouches[0]?.clientY||0)-y,x=ind();const shouldRefresh=d>=180&&!busy;if(!shouldRefresh){resetPull();x.style.opacity=0;return;}busy=true;x.innerHTML='<span class="pull-spin">↻</span>Refreshing…';x.style.opacity=1;try{await refresh();render();}finally{resetPull();busy=false;setTimeout(()=>x.style.opacity=0,300);}}, {passive:true});
  const _pe=profileEditSheet;profileEditSheet=function(){_pe();const b=$('sheet-body'),i=b&&b.querySelector('#pf-photo');if(!i)return;let l=b.querySelector('.profile-photo-loading');if(!l){l=document.createElement('small');l.className='profile-photo-loading';l.textContent='Loading photo…';l.hidden=true;i.parentElement.appendChild(l);}i.addEventListener('change',()=>{l.hidden=false;const t=setInterval(()=>{if(!UI.sheet?.photoLoading){l.hidden=true;clearInterval(t);}},120);});};
+})();
+
+/* PATCH: week image carousel, public ladders, round club/member avatars and feed shortcut */
+(function(){
+ const baseWeek=weekCard;
+ const WEEK={touch:0,timer:null};
+ function weekSet(i){const c=document.querySelector('.week-carousel'),t=c&&c.querySelector('.week-track');if(!c||!t)return;const n=+c.dataset.count||1;UI.weekSlide=(i+n)%n;t.style.transform='translateX(-'+(UI.weekSlide*100)+'%)';c.querySelectorAll('.week-dot').forEach((d,k)=>d.classList.toggle('on',k===UI.weekSlide));}
+ weekCard=function(){const imgs=(CLUB.app?.weekCards||[]).filter(x=>x&&(x.image||x.photo));if(!imgs.length)return baseWeek();const slides=[baseWeek()].concat(imgs.map(x=>'<div class="week-slide week-poster">'+(x.image||x.photo?'<img src="'+esc(x.image||x.photo)+'" alt="'+esc(x.title||'Your week')+'">':'')+(x.title?'<b>'+esc(x.title)+'</b>':'')+'</div>'));const n=slides.length;if(UI.weekSlide==null||UI.weekSlide>=n)UI.weekSlide=0;return '<section class="week-carousel card" data-count="'+n+'"><div class="week-track" style="transform:translateX(-'+(UI.weekSlide*100)+'%)">'+slides.map(x=>'<div class="week-slide">'+x+'</div>').join('')+'</div><div class="week-dots" aria-label="Your week cards">'+slides.map((x,i)=>'<button type="button" class="week-dot'+(i===UI.weekSlide?' on':'')+'" data-act="week-dot" data-i="'+i+'" aria-label="Card '+(i+1)+'"></button>').join('')+'</div></section>';};
+ document.addEventListener('touchstart',e=>{const c=e.target.closest('.week-carousel');if(c)WEEK.touch=e.touches[0].clientX;},{passive:true});
+ document.addEventListener('touchend',e=>{if(!WEEK.touch)return;const x=e.changedTouches[0]?.clientX||WEEK.touch,d=x-WEEK.touch;WEEK.touch=0;if(Math.abs(d)>35)weekSet((UI.weekSlide||0)+(d<0?1:-1));},{passive:true});
+ document.addEventListener('click',e=>{const b=e.target.closest('[data-act="week-dot"]');if(b)weekSet(+b.dataset.i);const f=e.target.closest('[data-act="feed-add"]');if(f){if(liveOn())liveFinish();else{sessSheet(null);$('sheet').classList.add('modern-sheet','training-sheet');}}});
+ const style=document.createElement('style');style.textContent='.week-carousel{overflow:hidden;padding:0}.week-track{display:flex;transition:transform .35s ease}.week-slide{flex:0 0 100%;width:100%}.week-slide>.card{margin:0;border:0;box-shadow:none}.week-poster{min-height:190px;display:flex;flex-direction:column;justify-content:center;align-items:center;gap:8px;background:var(--card)}.week-poster img{display:block;width:100%;height:190px;object-fit:cover}.week-poster b{padding:0 14px 14px}.week-dots{display:flex;justify-content:center;gap:6px;padding:9px}.week-dot{width:7px;height:7px;padding:0;border:0;border-radius:50%;background:var(--line)}.week-dot.on{background:var(--ink);transform:scale(1.25)}.club-logo,.club-logo.large,.member-row-round .av{border-radius:50%;overflow:hidden}.club-logo img,.member-row-round .av img{border-radius:50%;object-fit:cover}.feed-add{margin-left:auto;font-size:24px;line-height:1}';document.head.appendChild(style);
+ setInterval(()=>{if(UI.tab==='home'&&document.querySelector('.week-carousel'))weekSet((UI.weekSlide||0)+1);},7000);
 })();
 })();
 
