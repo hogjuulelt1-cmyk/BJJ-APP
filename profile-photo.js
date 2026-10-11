@@ -4,8 +4,14 @@
   window.ARROW_PHOTO = {
     async crop(host, file, onChange, isCurrent, size = 50) {
       const url = URL.createObjectURL(file), image = new Image();
-      try { image.src = url; await image.decode(); }
-      finally { URL.revokeObjectURL(url); }
+      try {
+        image.src = url;
+        if (image.decode) await image.decode();
+        else await new Promise((resolve, reject) => { image.onload = resolve; image.onerror = reject; });
+        if (!image.naturalWidth) await new Promise((resolve, reject) => { image.onload = resolve; image.onerror = reject; });
+      } catch (err) {
+        await new Promise((resolve, reject) => { image.onload = resolve; image.onerror = reject; });
+      } finally { URL.revokeObjectURL(url); }
       if (!host.isConnected || (isCurrent && !isCurrent())) return;
       host.innerHTML = '<p class="lbl">Crop your photo</p><p class="muted small">Drag to position. Zoom to crop.</p><canvas class="avatar-crop" width="360" height="360" tabindex="0" role="img" aria-label="Photo crop: drag or use arrow keys to position"></canvas><label class="crop-zoom">Zoom<input type="range" min="1" max="4" step="0.01" value="1" aria-label="Photo zoom"></label><p class="muted small">Saved as ' + size + ' × ' + size + ' px</p>';
       const canvas = host.querySelector('canvas'), slider = host.querySelector('input');
