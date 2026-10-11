@@ -703,6 +703,16 @@ body:has(.auth-reference)::after{display:none!important}
 .notice-request .txt{flex:1;min-width:150px}
 .notice-pay-actions{display:flex;align-items:center;gap:6px;margin-left:auto}
 .notice-pay-actions .btn{min-height:36px;padding-inline:12px}
+
+/* Payment status uses text color only */
+.pill.payment-state{background:transparent!important;border:0!important;box-shadow:none!important;padding-inline:0!important}
+.pill.payment-paid{color:var(--ok)!important}
+.pill.payment-soon{color:var(--warn)!important}
+.pill.payment-expired{color:var(--t-td)!important}
+.pill.payment-neutral,.pill.payment-pending{color:var(--muted)!important}
+/* Keep the Settings sheet footer tight to the bottom button */
+.settings-sheet{padding-bottom:max(4px,env(safe-area-inset-bottom,0px))}
+.settings-sheet .foot{margin-top:0;padding:8px 0 0}
 </style>
 <link rel="stylesheet" href="ui-feedback.css?v=1">
 <link rel="stylesheet" href="mobile-refresh.css?v=13">
