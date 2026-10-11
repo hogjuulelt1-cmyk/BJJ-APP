@@ -2492,7 +2492,7 @@ VIEWS.home = function () {
   if (clubNeeds()) return h;
   if (!CLUB.id) return h + '<div class="card"><p class="empty">Join a club to see your teammates’ training.</p><button class="btn wide" data-act="tab" data-v="club">Find my club</button></div>';
   if (!FEED.ready) return h;
-  return h + suggestedFriends() + '<div class="feed-heading"><h3>Training feed</h3><button class="icon-btn feed-add" data-act="feed-add" aria-label="Finish training">＋</button></div><section id="feed-list" aria-label="Training feed">' + unifiedPosts().map(feedCard).join('') + '</section><div id="feed-tail"></div>';
+  return h + suggestedFriends() + '<div class="feed-heading" style="display:flex;align-items:center;justify-content:space-between;gap:12px"><h3 style="margin:0">Training feed</h3><button class="icon-btn feed-add" style="margin:0;flex:0 0 auto" data-act="feed-add" aria-label="Finish training">＋</button></div><section id="feed-list" aria-label="Training feed">' + unifiedPosts().map(feedCard).join('') + '</section><div id="feed-tail"></div>';
 };
 function unifiedPosts() { const friends=new Set(acceptedFriends()); return eligiblePosts().filter(p => p.audience !== 'private' && (p.audience !== 'friends' || p.uid === myUid() || friends.has(p.uid))).sort(window.ARROW_FEED.compare); }
 function friendship(id) { return (((CLUB.friends || {}).list) || []).find((r) => (r.from === myUid() && r.to === id) || (r.to === myUid() && r.from === id)); }
