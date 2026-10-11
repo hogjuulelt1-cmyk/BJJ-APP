@@ -3160,3 +3160,24 @@ document.addEventListener('touchmove',e=>{if(!on)return;const d=e.touches[0].cli
  document.addEventListener('touchend',settled,{passive:true});
  document.addEventListener('touchcancel',settled,{passive:true});
 })();
+
+
+/* Edge bounce when a scroll gesture reaches a page boundary */
+(function(){
+ let previous=window.scrollY||0,bouncing=false,timer=null;
+ function bounce(direction){
+  if(bouncing||UI.sheet||!['home','club'].includes(UI.tab))return;
+  const el=document.querySelector('.wrap');if(!el)return;
+  bouncing=true;clearTimeout(timer);el.classList.add('edge-bounce');el.style.transition='none';el.style.transform='translate3d(0,'+(direction==='top'?36:-36)+'px,0)';
+  requestAnimationFrame(()=>{el.style.transition='transform .34s cubic-bezier(.2,.8,.2,1)';el.style.transform='translate3d(0,0,0)';});
+  timer=setTimeout(()=>{el.classList.remove('edge-bounce');el.style.transition='';el.style.transform='';bouncing=false;},420);
+ }
+ window.addEventListener('scroll',()=>{
+  const max=Math.max(0,document.documentElement.scrollHeight-innerHeight),now=window.scrollY||0;
+  if(!on&&!bouncing){
+   if(now<=1&&previous>now+1)bounce('top');
+   else if(max>0&&now>=max-1&&previous<now-1)bounce('bottom');
+  }
+  previous=now;
+ },{passive:true});
+})();
