@@ -2094,7 +2094,7 @@ function payNowSheet() {
   openSheet("Pay " + P.n, b, { saveLabel: "I have paid", async onSave() {
     const doc = CLUB.pay[me] || { items: [] }; const months = drop ? 1 : Math.min(24, Math.max(1, Math.round(+sv("p-months") || plan.months || 1))); const total = +sv("p-amt") || plan.price || 0; const per0 = drop ? thisMonth() : sv("p-per") || start; const group = uid(); const each = Math.floor(total / months); const note = sv("p-note").trim(); const d = todayIso();
     for (let i = 0; i < months; i++) { const it = { id: uid(), d, per: drop ? per0 : addMonth(per0, i), amt: i ? each : total - each * (months - 1), note, by: me, status: "pending", plan: plan.id, group }; if (drop) it.drop = true; doc.items.push(it); }
-    CLUB.pay[me] = doc; await cset("club/" + P.id + "/pay/" + me, doc); toast("Sent to your coach"); render(); return true;
+    if (!total || total < 1) { toast("Enter a valid payment amount"); return false; } CLUB.pay[me] = doc; await cset("club/" + P.id + "/pay/" + me, doc); closeSheet(); toast("Sent to your coach"); render(); return false;
   } });
 }
 async function confirmPay(uidFor, id) {
