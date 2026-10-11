@@ -697,6 +697,12 @@ body:has(.auth-reference)::after{display:none!important}
 /* Payment tab highlight */
 .seg button.seg-pay-highlight{color:var(--accent);background:var(--accent-soft);border:1px solid var(--accent);font-weight:800}
 .seg button.seg-pay-highlight[aria-selected="true"]{color:var(--accent-ink);background:var(--accent);border-color:var(--accent);box-shadow:0 2px 8px rgba(15,20,25,.18)}
+
+/* Coach notification payment actions */
+.notice-request{align-items:center;flex-wrap:wrap;row-gap:10px}
+.notice-request .txt{flex:1;min-width:150px}
+.notice-pay-actions{display:flex;align-items:center;gap:6px;margin-left:auto}
+.notice-pay-actions .btn{min-height:36px;padding-inline:12px}
 </style>
 <link rel="stylesheet" href="ui-feedback.css?v=1">
 <link rel="stylesheet" href="mobile-refresh.css?v=13">
