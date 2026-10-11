@@ -676,10 +676,11 @@ body.is-scrolling button:active,body.is-scrolling a:active,body.is-scrolling .bt
 /* Keep the sticky submenu flush with the global header; preserve the initial content breathing room inside main. */
 .wrap{gap:0}
 .wrap>#main{padding-top:16px}
+.wrap>#main:has(.profile-hero){padding-top:0}
 .seg-wrap{position:sticky!important;top:var(--header-height,76px);z-index:24;background:transparent;padding-block:2px;margin-block:-2px;overflow:visible!important}
 .seg-wrap::before{content:"";position:absolute;z-index:0;top:0;bottom:0;left:50%;width:100vw;transform:translateX(-50%);background:var(--bg);border-bottom:1px solid var(--line);pointer-events:none}
 .seg-wrap>.seg{position:relative;z-index:1}
-.profile-hero + .seg-wrap{margin-top:-12px}
+.profile-hero + .seg-wrap{margin-top:-16px}
 /* Compact single-screen sign in */
 body:has(.auth-reference){padding-bottom:0;overflow:hidden}
 body:has(.auth-reference)::after{display:none!important}
