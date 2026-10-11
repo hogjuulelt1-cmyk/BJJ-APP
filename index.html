@@ -722,6 +722,11 @@ body:has(.auth-reference)::after{display:none!important}
 /* Keep the Settings sheet footer tight to the bottom button */
 .settings-sheet{padding-bottom:max(4px,env(safe-area-inset-bottom,0px))}
 .settings-sheet .foot{margin-top:0;padding:8px 0 0}
+/* Tight Settings → Clubs/action buttons */
+.settings-sheet .settings-section{padding-block:14px}
+.settings-sheet .settings-section .settings-row{margin:0!important;padding-block:10px;background:transparent!important}
+.settings-sheet .settings-section>.btn.wide,.settings-sheet .settings-section>details{margin:0!important}
+.settings-sheet .settings-section>details>.btn.wide{display:block;margin-top:8px!important}
 
 .notice-request[data-act="notice-pay-open"]{cursor:pointer}
 .notice-request[data-act="notice-pay-open"]:hover{background:var(--sunk)}
