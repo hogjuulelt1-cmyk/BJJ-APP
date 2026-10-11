@@ -656,6 +656,9 @@ body::after{content:"";position:fixed;left:0;right:0;bottom:0;height:170px;z-ind
 @media (prefers-reduced-motion:reduce){.live-start{animation:none}}
 /* Prevent accidental taps while the page is moving */
 body.is-scrolling button,body.is-scrolling a,body.is-scrolling [data-act]{pointer-events:none!important}
+/* Edge bounce stays subtle and never acts like a button press */
+body.is-scrolling button:active,body.is-scrolling a:active{transform:none!important}
+.wrap.edge-bounce{will-change:transform}
 </style>
 <link rel="stylesheet" href="ui-feedback.css?v=1">
 <link rel="stylesheet" href="mobile-refresh.css?v=13">
