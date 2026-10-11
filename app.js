@@ -3132,3 +3132,5 @@ if (SB.configured()) { resetPasswordFromLink().then(handled=>{if(handled)return;
 })();
 })();
 
+
+/* Ensure latest profile-photo fallback is deployed. */
