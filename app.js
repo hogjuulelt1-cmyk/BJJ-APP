@@ -2211,7 +2211,7 @@ document.addEventListener("click", async (e) => {
   if (act === "pk-dec") { pkChange(ds.pk, +ds.i, -1); return; }
   if (act === "pk-rm") { pkChange(ds.pk, +ds.i, 0); return; }
   switch (act) {
-    case "tab": { const order = TABS.map((t) => t[0]); const anim = order.indexOf(ds.v) > order.indexOf(UI.tab) ? "enter-l" : "enter-r"; if(ds.v==="me") UI.seg.me="log"; UI.tab = ds.v; try { localStorage.setItem("bjj-tab", ds.v); } catch (x) {} go(anim); setTimeout(()=>{window.scrollTo({top:0,behavior:"instant"});$("main")?.scrollTo({top:0,behavior:"instant"});},40); break; }
+    case "tab": { const from=UI.tab; ARROW_PAGE_POS[from]=window.scrollY||0; const order=TABS.map(t=>t[0]),anim=order.indexOf(ds.v)>order.indexOf(from)?"enter-l":"enter-r"; if(ds.v==="me") UI.seg.me="log"; UI.tab=ds.v; try{localStorage.setItem("bjj-tab",ds.v);}catch(x){} go(anim); if(ds.v==="me"||ds.v==="club"){ arrowSubmenuStart(ds.v==="me"?"segview":"clubseg",ARROW_PAGE_POS[ds.v]||0); }else{requestAnimationFrame(()=>window.scrollTo({top:0,behavior:"instant"}));} break; }
     case "settings": settingsSheet(); break;
     case "avatar-rm": if (UI.sheet) { UI.sheet.photoVersion = (UI.sheet.photoVersion || 0) + 1; UI.sheet.photoLoading = false; UI.sheet.av = ""; const crop = $("pf-crop"); if (crop) crop.replaceChildren(); avatarPreview(); } break;
     case "menu": menuSheet(); break;
@@ -2289,10 +2289,10 @@ document.addEventListener("click", async (e) => {
     case "club-admin": if (isAdmin()) { const P = CLUB.profile; P.admins = P.admins || []; const i = P.admins.indexOf(ds.uid); if (i >= 0) P.admins.splice(i, 1); else P.admins.push(ds.uid); cset("club/" + P.id + "/profile", P).then(render); } break;
     case "club-leave": if (UI.confirm === "leave") { UI.confirm = null; clubLeave(); } else { UI.confirm = "leave"; render(); setTimeout(() => { if (UI.confirm === "leave") { UI.confirm = null; render(); } }, 3000); } break;
     case "techview": UI.tech.view = ds.v; UI.rollId = null; render(); break;
-    case "segview": { const pageY=window.scrollY||0,mainY=$("main")?.scrollTop||0; UI.seg[UI.tab] = ds.v; render(); requestAnimationFrame(()=>{window.scrollTo({top:pageY,behavior:"instant"});$("main")?.scrollTo({top:mainY,behavior:"instant"});}); break; }
+    case "segview": UI.seg[UI.tab] = ds.v; render(); arrowSubmenuStart("segview"); break;
     case "cal-nav": UI.calYm = ymShift(UI.calYm || todayIso().slice(0, 7), +ds.v); render(); break;
     case "anarange": UI.anaRange = ds.v; render(); break;
-    case "clubseg": UI.clubSeg = ds.v; render(); break;
+    case "clubseg": UI.clubSeg = ds.v; render(); arrowSubmenuStart("clubseg"); break;
     case "roll-start": rollStart(ds.pos); break;
     case "roll-by": if (UI.roll) { UI.roll.by = ds.v; UI.roll.grp = null; render(); } break;
     case "add-setup": setupEdit(null, ds.pos || null); break;
@@ -3194,3 +3194,17 @@ document.addEventListener('touchmove',e=>{if(!on)return;const d=e.touches[0].cli
   },24);
  },{passive:true});
 })();
+
+/* Parent page stays at its submenu; selected content starts below it. */
+const ARROW_PAGE_POS={};
+function arrowSubmenuStart(action,returnPosition){
+ requestAnimationFrame(()=>{
+  const button=document.querySelector('#main [data-act="'+action+'"]');
+  const bar=button?.closest('.seg-wrap')||button?.closest('.seg');
+  if(!bar)return;
+  const header=document.querySelector('header.top')?.getBoundingClientRect().bottom||0;
+  const anchor=Math.max(0,window.scrollY+bar.getBoundingClientRect().top-header-8);
+  const target=returnPosition===undefined?anchor:Math.min(returnPosition,anchor);
+  window.scrollTo({top:target,behavior:'instant'});
+ });
+}
